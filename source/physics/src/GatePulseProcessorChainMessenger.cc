@@ -46,6 +46,7 @@ See LICENSE.md for further details
 #include "GatePulseAdderCompton.hh"
 #include "GateCrystalBlurring.hh"
 #include "GateTemporalResolution.hh"
+#include "GateMultTemporalResolution.hh"
 #include "GatePulseAdderGPUSpect.hh"
 
 #ifdef GATE_USE_OPTICAL
@@ -90,7 +91,7 @@ void GatePulseProcessorChainMessenger::SetNewValue(G4UIcommand* command,G4String
 
 const G4String& GatePulseProcessorChainMessenger::DumpMap()
 {
-   static G4String theList = "readout pileup thresholder upholder blurring localBlurring localEfficiency energyEfficiency noise discretizer buffer transferEfficiency crosstalk lightYield quantumEfficiency intrinsicResolutionBlurring sigmoidalThresholder calibration spblurring adder adderCompton deadtime crystalblurring timeResolution opticaladder systemFilter adderGPUSpect";
+   static G4String theList = "readout pileup thresholder upholder blurring localBlurring localEfficiency energyEfficiency noise discretizer buffer transferEfficiency crosstalk lightYield quantumEfficiency intrinsicResolutionBlurring sigmoidalThresholder calibration spblurring adder adderCompton deadtime crystalblurring timeResolution multTimeResolution opticaladder systemFilter adderGPUSpect";
   return theList;
 }
 
@@ -158,6 +159,8 @@ void GatePulseProcessorChainMessenger::DoInsertion(const G4String& childTypeName
     newProcessor = new GateBuffer(GetProcessorChain(),newInsertionName);
   else if (childTypeName=="timeResolution")
     newProcessor = new GateTemporalResolution(GetProcessorChain(),newInsertionName,0. * ns);
+  else if (childTypeName=="multTimeResolution")
+    newProcessor = new GateMultTemporalResolution(GetProcessorChain(),newInsertionName,0., 0., 0. * ns);
   else if (childTypeName=="systemFilter")
      newProcessor = new GateSystemFilter(GetProcessorChain(),newInsertionName);
 #ifdef GATE_USE_OPTICAL
