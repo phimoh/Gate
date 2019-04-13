@@ -11,7 +11,7 @@ See LICENSE.md for further details
 #include "GateMultTemporalResolution.hh"
 
 #include "G4UnitsTable.hh"
-
+#include "GateVolumeID.hh"
 #include "GateMultTemporalResolutionMessenger.hh"
 #include "GateTools.hh"
 
@@ -62,6 +62,10 @@ void GateMultTemporalResolution::ProcessOnePulse(const GatePulse* inputPulse,Gat
       {
     GatePulse* outputPulse = new GatePulse(*inputPulse);
     // set the new time by a Gaussian shot of mean: old time, and of sigma: m_timeResolution/2.35
+    G4String LayerName = ((inputPulse->GetVolumeID()).GetBottomCreator())->GetObjectName();
+
+//    if (LayerName == LYSO_cry) // Slow event
+    //! TODO: Finsish this.
     G4double sigma =  m_timeResolution1 / GateConstants::fwhm_to_sigma;
     outputPulse->SetTime(G4RandGauss::shoot(inputPulse->GetTime(), sigma));
     outputPulseList.push_back(outputPulse);
