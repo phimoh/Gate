@@ -15,7 +15,7 @@ See LICENSE.md for further details
 #include <fstream>
 #include <vector>
 #include "G4ThreeVector.hh"
-
+#include "GateObjectStore.hh"
 #include "GateVPulseProcessor.hh"
 
 
@@ -24,6 +24,9 @@ class GateTemporalResolutionMessenger;
 
 /*! \class  GateTemporalResolution
     \brief  Pulse-processor modeling a Gaussian blurring on the time of the pulse.
+
+    - Modification to apply the temporal resolution in a specific volume.
+            - by Nikos Efthimiou (n.efthymiou@hull.ac.uk) (April 2019)
 
     - GateTemporalResolution - by Martin.Rey@epfl.ch (July 2003)
 
@@ -42,6 +45,9 @@ class GateTemporalResolution : public GateVPulseProcessor
 			       G4double itsTimeResolution=0.) ;
     //! Destructor
     virtual ~GateTemporalResolution() ;
+
+    //! Check the validity of the volume name where the dead time will be applied
+    void CheckVolumeName(G4String val);
 
     //! Returns the time resolution
     G4double GetTimeResolution()   	      { return m_timeResolution; }
@@ -62,8 +68,10 @@ class GateTemporalResolution : public GateVPulseProcessor
 
   private:
     G4double m_timeResolution;     	      	      //!< TimeResolution value
+    G4String m_volumeName;  //!< Name of the volume where Dead time is applied
+    G4int m_testVolume;     //!< equal to 1 if the volume name is valid, 0 else
     GateTemporalResolutionMessenger *m_messenger;    //!< Messenger
-   static const G4String& theTypeName;   //!< Default type-name for all blurrings
+    static const G4String& theTypeName;   //!< Default type-name for all blurrings
 };
 
 

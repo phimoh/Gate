@@ -157,7 +157,7 @@ void GatePulseProcessorChainMessenger::DoInsertion(const G4String& childTypeName
     newProcessor = new GateNoise(GetProcessorChain(),newInsertionName);
   else if (childTypeName=="buffer")
     newProcessor = new GateBuffer(GetProcessorChain(),newInsertionName);
-  else if (childTypeName=="timeResolution")
+  else if (childTypeName.find("timeResolution") != std::string::npos)
     newProcessor = new GateTemporalResolution(GetProcessorChain(),newInsertionName,0. * ns);
   else if (childTypeName=="multTimeResolution")
     newProcessor = new GateMultTemporalResolution(GetProcessorChain(),newInsertionName,0., 0., 0. * ns);

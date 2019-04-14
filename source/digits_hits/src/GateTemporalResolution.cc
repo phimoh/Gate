@@ -13,7 +13,7 @@ See LICENSE.md for further details
 
 #include "GateTemporalResolutionMessenger.hh"
 #include "GateTools.hh"
-
+#include "GateObjectStore.hh"
 #include "Randomize.hh"
 #include "GateConstants.hh"
 
@@ -39,11 +39,20 @@ GateTemporalResolution::~GateTemporalResolution()
 
 void GateTemporalResolution::ProcessOnePulse(const GatePulse* inputPulse,GatePulseList& outputPulseList)
 {
+    G4String LayerName = ((inputPulse->GetVolumeID()).GetBottomCreator())->GetObjectName();
   if(m_timeResolution < 0 ) {
     G4cerr << 	Gateendl << "[GateTemporalResolution::ProcessOnePulse]:\n"
       	   <<   "Sorry, but the resolution (" << GetTimeResolution() << ") is invalid\n";
     G4Exception( "GateTemporalResolution::ProcessOnePulse", "ProcessOnePulse", FatalException,
 			"You must choose a temporal resolution >= 0 /gate/digitizer/Singles/Singles/timeResolution/setTimeResolution TIME\n or disable the temporal resolution using:\n\t/gate/digitizer/Singles/Singles/timeResolution/disable\n");
+  }
+  else if(LayerName != m_volumeName)
+  {
+      if (nVerboseLevel>1)
+          G4cout << "[GateTemporalResolution::ProcessOnePulse]: input pulse on different volume -> nothing to do\n\n";
+      GatePulse* outputPulse = new GatePulse(*inputPulse);
+      outputPulseList.push_back(outputPulse);
+      return;
   }
   else {
     if (!inputPulse) {
@@ -75,6 +84,21 @@ void GateTemporalResolution::ProcessOnePulse(const GatePulse* inputPulse,GatePul
   }
 }
 
+void GateTemporalResolution::CheckVolumeName(G4String val)
+{
+  GateObjectStore* anInserterStore = GateObjectStore::GetInstance();
+
+
+  if (anInserterStore->FindCreator(val)) {
+    m_volumeName = val;
+
+//    FindLevelsParams(anInserterStore);
+    m_testVolume = 1;
+  }
+  else {
+    G4cout << "Wrong Volume Name\n";
+  }
+}
 
 void GateTemporalResolution::DescribeMyself(size_t indent)
 {

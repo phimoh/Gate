@@ -29,6 +29,7 @@ class GateTemporalResolutionMessenger: public GatePulseProcessorMessenger
 
   private:
     G4UIcmdWithADoubleAndUnit   *timeResolutionCmd;
+    G4UIcmdWithAString   *newVolCmd;        //!< set the geometric level of application
 };
 
 #endif
