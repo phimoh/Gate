@@ -40,6 +40,17 @@ void GateThresholder::ProcessOnePulse(const GatePulse* inputPulse,GatePulseList&
       	G4cout << "[GateThresholder::ProcessOnePulse]: input pulse was null -> nothing to do\n\n";
     return;
   }
+
+  G4String LayerName = ((inputPulse->GetVolumeID()).GetBottomCreator())->GetObjectName();
+  if(LayerName != m_volumeName)
+  {
+      if (nVerboseLevel>1)
+          G4cout << "[GateThresholder::ProcessOnePulse]: input pulse on different volume -> nothing to do\n\n";
+      GatePulse* outputPulse = new GatePulse(*inputPulse);
+      outputPulseList.push_back(outputPulse);
+      return;
+  }
+
   if (inputPulse->GetEnergy()==0) {
     if (nVerboseLevel>1)
       	G4cout << "[GateThresholder::ProcessOneHit]: energy is null for " << inputPulse << " -> pulse ignored\n\n";
@@ -61,6 +72,21 @@ void GateThresholder::ProcessOnePulse(const GatePulse* inputPulse,GatePulseList&
   }
 }
 
+void GateThresholder::CheckVolumeName(G4String val)
+{
+  GateObjectStore* anInserterStore = GateObjectStore::GetInstance();
+
+
+  if (anInserterStore->FindCreator(val)) {
+    m_volumeName = val;
+
+//    FindLevelsParams(anInserterStore);
+    m_testVolume = 1;
+  }
+  else {
+    G4cout << "Wrong Volume Name\n";
+  }
+}
 
 
 void GateThresholder::DescribeMyself(size_t indent)

@@ -115,7 +115,7 @@ void GatePulseProcessorChainMessenger::DoInsertion(const G4String& childTypeName
     newProcessor = new GatePileup(GetProcessorChain(),newInsertionName);
   else if (childTypeName=="discretizer")
     newProcessor = new GateDiscretizer(GetProcessorChain(),newInsertionName);
-  else if (childTypeName=="thresholder")
+  else if (childTypeName.find("thresholder") != std::string::npos)
     newProcessor = new GateThresholder(GetProcessorChain(),newInsertionName,50.*keV);
   else if (childTypeName=="upholder")
     newProcessor = new GateUpholder(GetProcessorChain(),newInsertionName,150.*keV);

@@ -14,7 +14,7 @@ See LICENSE.md for further details
 #include <iostream>
 #include <vector>
 #include "G4ThreeVector.hh"
-
+#include "GateObjectStore.hh"
 #include "GateVPulseProcessor.hh"
 
 class GateThresholderMessenger;
@@ -43,6 +43,9 @@ class GateThresholder : public GateVPulseProcessor
     //! Destructor
     virtual ~GateThresholder() ;
 
+    //! Check the validity of the volume name where the dead time will be applied
+    void CheckVolumeName(G4String val);
+
     //! Returns the threshold
     G4double GetThreshold()   	      { return m_threshold; }
 
@@ -62,6 +65,8 @@ class GateThresholder : public GateVPulseProcessor
 
   private:
     G4double m_threshold;     	      	      //!< Threshold value
+    G4String m_volumeName;  //!< Name of the volume where Dead time is applied
+    G4int m_testVolume;     //!< equal to 1 if the volume name is valid, 0 else
     GateThresholderMessenger *m_messenger;    //!< Messenger
 };
 

@@ -23,12 +23,17 @@ GateThresholderMessenger::GateThresholderMessenger(GateThresholder* itsThreshold
   thresholdCmd = new G4UIcmdWithADoubleAndUnit(cmdName,this);
   thresholdCmd->SetGuidance("Set threshold (in keV) for pulse-discrimination");
   thresholdCmd->SetUnitCategory("Energy");
+
+  cmdName = GetDirectoryName() + "chooseTHVolume";
+  newVolCmd = new G4UIcmdWithAString(cmdName,this);
+  newVolCmd->SetGuidance("Choose a volume (depth) for the threshold application(e.g. crystal)");
 }
 
 
 GateThresholderMessenger::~GateThresholderMessenger()
 {
   delete thresholdCmd;
+    delete newVolCmd;
 }
 
 
@@ -36,6 +41,8 @@ void GateThresholderMessenger::SetNewValue(G4UIcommand* command, G4String newVal
 {
   if ( command==thresholdCmd )
     { GetThresholder()->SetThreshold(thresholdCmd->GetNewDoubleValue(newValue)); }
+  else if (command==newVolCmd )
+    GetThresholder()->CheckVolumeName(newValue);
   else
     GatePulseProcessorMessenger::SetNewValue(command,newValue);
 }

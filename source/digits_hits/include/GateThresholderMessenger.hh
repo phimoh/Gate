@@ -37,6 +37,7 @@ class GateThresholderMessenger: public GatePulseProcessorMessenger
 
   private:
     G4UIcmdWithADoubleAndUnit   *thresholdCmd;
+    G4UIcmdWithAString   *newVolCmd;        //!< set the geometric level of application
 };
 
 #endif
