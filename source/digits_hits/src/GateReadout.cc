@@ -101,6 +101,10 @@ void GateReadout::SetPolicy(const G4String& aPolicy)
     // Now force m_depth to be right above the crystal depth
     m_depth = m_crystalDepth - 1;
   }
+  else if (aPolicy =="TakeLayerWinner")
+  {
+    m_policy = READOUT_POLICY_PLASTIC;
+  }
   else G4Exception( "GateReadout::SetPolicy", "SetPolicy", FatalException, "Unknown provided policy, please see the guidance. Abort.\n");
 }
 
@@ -127,9 +131,15 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
   G4double* final_crystal_posX = NULL;
   G4double* final_crystal_posY = NULL;
   G4double* final_crystal_posZ = NULL;
+
+  // Used in the winner policy
   G4double* final_energy = NULL;
   G4int* final_nb_pulses = NULL;
   GatePulse** final_pulses = NULL;
+
+  G4double* plastic_energy = NULL;
+  GatePulse** plastic_pulses = NULL;
+
   if (m_policy==READOUT_POLICY_CENTROID)
   {
     final_time         = (G4double*)calloc(n_pulses,sizeof(G4double));
@@ -138,12 +148,19 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
     final_crystal_posZ = (G4double*)calloc(n_pulses,sizeof(G4double));
     final_nb_pulses    = (G4int*)calloc(n_pulses,sizeof(G4int));
   }
+  if (m_policy == READOUT_POLICY_PLASTIC)
+  {
+        plastic_energy = (G4double*)calloc(n_pulses,sizeof(G4double));
+        plastic_pulses = (GatePulse**)calloc(n_pulses,sizeof(GatePulse*));
+  }
   // S. Stute: we need energy to sum up correctly for all output pulses and affect only at the end.
   //           In previous versions, even for take Winner, the energy was affected online so the
   //           final pulse was not the winner in all cases.
   final_energy = (G4double*)calloc(n_pulses,sizeof(G4double));
   final_pulses = (GatePulse**)calloc(n_pulses,sizeof(GatePulse*));
   G4int final_nb_out_pulses = 0;
+   G4int plastic_nb_out_pulses = 0;
+   G4int overall_nb_out_pulses = 0;
 
   // Start loop on input pulses
   GatePulseConstIterator iterIn;
@@ -161,13 +178,40 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
       continue;
     }
 
+    G4String curLayerName = ((inputPulse->GetVolumeID()).GetBottomCreator())->GetObjectName();
+
     // Loop inside the temporary output list to see if we have one pulse with same blockID as input
     int this_output_pulse = 0;
-    for (this_output_pulse=0; this_output_pulse<final_nb_out_pulses; this_output_pulse++)
-      if (final_pulses[this_output_pulse]->GetOutputVolumeID().Top(m_depth) == blockID) break;
+    bool found = false;
+    if (m_policy == READOUT_POLICY_PLASTIC)
+    {
+        if (curLayerName == m_layerName)
+        {
+            for (this_output_pulse=0; this_output_pulse<plastic_nb_out_pulses; this_output_pulse++)
+                if (plastic_pulses[this_output_pulse]->GetOutputVolumeID().Top(m_depth) == blockID) found = true;
+
+            if (this_output_pulse == plastic_nb_out_pulses)
+                found = false;
+        }
+        else {
+            for (this_output_pulse=0; this_output_pulse<final_nb_out_pulses; this_output_pulse++)
+                if (final_pulses[this_output_pulse]->GetOutputVolumeID().Top(m_depth) == blockID) found = true;
+
+            if (this_output_pulse == final_nb_out_pulses)
+                found = false;
+        }
+    }
+    else
+    {
+        for (this_output_pulse=0; this_output_pulse<final_nb_out_pulses; this_output_pulse++)
+            if (final_pulses[this_output_pulse]->GetOutputVolumeID().Top(m_depth) == blockID) found = true;
+
+        if (this_output_pulse == final_nb_out_pulses)
+            found = false;
+    }
 
     // Case: we found an output pulse with same blockID
-    if ( this_output_pulse!=final_nb_out_pulses )
+    if ( found )
     {
       // --------------------------------------------------------------------------------
       // WinnerTakeAllPolicy (APD like)
@@ -175,8 +219,28 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
       if (m_policy==READOUT_POLICY_WINNER)
       {
         // If energy is higher then replace the pulse by the new one
-        if ( inputPulse->GetEnergy() > final_pulses[this_output_pulse]->GetEnergy() ) final_pulses[this_output_pulse] = inputPulse;
+        if ( inputPulse->GetEnergy() > final_pulses[this_output_pulse]->GetEnergy() )
+            final_pulses[this_output_pulse] = inputPulse;
         final_energy[this_output_pulse] += inputPulse->GetEnergy();
+      }
+      else if(m_policy == READOUT_POLICY_PLASTIC)
+      {
+          // Since we are here there is at least one pulse in the same depth are we are.
+          //
+
+          if (curLayerName == m_layerName)
+          {
+              if ( inputPulse->GetEnergy() > plastic_pulses[this_output_pulse]->GetEnergy() )
+                  plastic_pulses[this_output_pulse] = inputPulse;
+              plastic_energy[this_output_pulse] += inputPulse->GetEnergy();
+          }
+          else {
+              if ( inputPulse->GetEnergy() > final_pulses[this_output_pulse]->GetEnergy() )
+                  final_pulses[this_output_pulse] = inputPulse;
+              final_energy[this_output_pulse] += inputPulse->GetEnergy();
+          }
+
+        int nikos = 0;
       }
       // --------------------------------------------------------------------------------
       // EnergyCentroidPolicy1 (like block PMT)
@@ -225,45 +289,119 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
         final_crystal_posY[final_nb_out_pulses] = energy * (((G4double)( tmp_crysXY / m_nbCrystalsX  ))+0.5);
         final_crystal_posX[final_nb_out_pulses] = energy * (((G4double)( tmp_crysXY % m_nbCrystalsX  ))+0.5);
       }
-      // Set the current energy
-      final_energy[final_nb_out_pulses] += energy;
-      // Store this pulse in the list
-      final_pulses[final_nb_out_pulses] = inputPulse;
+      else if(m_policy == READOUT_POLICY_WINNER)
+      {
+          // Set the current energy
+          final_energy[final_nb_out_pulses] += energy;
+          // Store this pulse in the list
+          final_pulses[final_nb_out_pulses] = inputPulse;
+
+          final_nb_out_pulses++;
+      }
+      else if (m_policy == READOUT_POLICY_PLASTIC)
+      {
+          G4String curLayerName = ((inputPulse->GetVolumeID()).GetBottomCreator())->GetObjectName();
+          if (curLayerName == m_layerName)
+          {
+              // Set the current energy
+              plastic_energy[plastic_nb_out_pulses] += energy;
+              // Store this pulse in the list
+              plastic_pulses[plastic_nb_out_pulses] = inputPulse;
+
+              plastic_nb_out_pulses ++ ;
+          }
+          else {
+              // Set the current energy
+              final_energy[final_nb_out_pulses] += energy;
+              // Store this pulse in the list
+              final_pulses[final_nb_out_pulses] = inputPulse;
+
+              final_nb_out_pulses++;
+          }
+      }
       // Increment the total number of output pulses
-      final_nb_out_pulses++;
+      overall_nb_out_pulses++;
     }
   } // End for input pulse
 
-  // S. Stute: create now the output pulse list
-  for (int p=0; p<final_nb_out_pulses; p++)
+  if (final_nb_out_pulses > 0)
+      int nikos = 0;
+
+  if (m_policy != READOUT_POLICY_PLASTIC)
   {
-    // Create the pulse
-    GatePulse* outputPulse = new GatePulse( final_pulses[p] );
-    // Affect energy
-    outputPulse->SetEnergy( final_energy[p] );
-    // Special affectations for centroid policy
-    if (m_policy==READOUT_POLICY_CENTROID)
-    {
-      // Affect time being the mean
-      outputPulse->SetTime( final_time[p] / ((G4double)final_nb_pulses[p]) );
-      // Compute integer crystal indices weighted by total energy
-      G4int crys_posX = ((G4int)(final_crystal_posX[p]/final_energy[p]));
-      G4int crys_posY = ((G4int)(final_crystal_posY[p]/final_energy[p]));
-      G4int crys_posZ = ((G4int)(final_crystal_posZ[p]/final_energy[p]));
-      // Compute final crystal id
-      G4int crystal_id = crys_posZ * m_nbCrystalsXY + crys_posY * m_nbCrystalsX + crys_posX;
-      // We change the level of the volumeID and the outputVolumeID corresponding to the crystal with the new crystal ID
-      outputPulse->ChangeVolumeIDAndOutputVolumeIDValue(m_crystalDepth,crystal_id);
-      // Change coordinates (we choose here to place the coordinates at the center of the chosen crystal)
-      //outputPulse->SetGlobalPos(m_system->ComputeObjectCenter(volID));
-      outputPulse->ResetGlobalPos(m_system);
-      outputPulse->ResetLocalPos();
-    }
-    if (nVerboseLevel>1)
-        G4cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
-               << "Resulting pulse is: \n"
-               << *outputPulse << Gateendl << Gateendl ;
-    outputPulseList->push_back(outputPulse);
+      // S. Stute: create now the output pulse list
+      for (int p=0; p<final_nb_out_pulses; p++)
+      {
+          // Create the pulse
+          GatePulse* outputPulse = new GatePulse( final_pulses[p] );
+          // Affect energy
+          outputPulse->SetEnergy( final_energy[p] );
+          // Special affectations for centroid policy
+          if (m_policy==READOUT_POLICY_CENTROID)
+          {
+              // Affect time being the mean
+              outputPulse->SetTime( final_time[p] / ((G4double)final_nb_pulses[p]) );
+              // Compute integer crystal indices weighted by total energy
+              G4int crys_posX = ((G4int)(final_crystal_posX[p]/final_energy[p]));
+              G4int crys_posY = ((G4int)(final_crystal_posY[p]/final_energy[p]));
+              G4int crys_posZ = ((G4int)(final_crystal_posZ[p]/final_energy[p]));
+              // Compute final crystal id
+              G4int crystal_id = crys_posZ * m_nbCrystalsXY + crys_posY * m_nbCrystalsX + crys_posX;
+              // We change the level of the volumeID and the outputVolumeID corresponding to the crystal with the new crystal ID
+              outputPulse->ChangeVolumeIDAndOutputVolumeIDValue(m_crystalDepth,crystal_id);
+              // Change coordinates (we choose here to place the coordinates at the center of the chosen crystal)
+              //outputPulse->SetGlobalPos(m_system->ComputeObjectCenter(volID));
+              outputPulse->ResetGlobalPos(m_system);
+              outputPulse->ResetLocalPos();
+          }
+
+          if (nVerboseLevel>1)
+              std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
+                        << "Resulting pulse is: \n"
+                        << *outputPulse << Gateendl << Gateendl ;
+          outputPulseList->push_back(outputPulse);
+      }
+  }
+  else
+  {
+      G4double sum_plastic_energy = 0.0;
+      G4double sum_final_energy = 0.0;
+      GatePulse* outputPulse = NULL ;
+
+
+      for(int p = 0; p < plastic_nb_out_pulses; p++)
+        sum_plastic_energy += plastic_energy[p];
+
+      for(int p = 0; p < final_nb_out_pulses; p++)
+        sum_final_energy += final_energy[p];
+
+      if (sum_final_energy >= 0.0 && sum_plastic_energy >= 0.0 )
+      {
+
+          if (sum_final_energy < sum_plastic_energy) // This is a fast event
+          {
+              // Take the largest plastic pulse
+              // Create the pulse
+              outputPulse = new GatePulse( plastic_pulses[plastic_nb_out_pulses-1] );
+              // Affect energy
+              outputPulse->SetEnergy( sum_plastic_energy );
+          }
+          else // This a slow event
+          {
+              // Take the largest LYSO pulse
+              // Create the pulse
+              outputPulse = new GatePulse( final_pulses[final_nb_out_pulses-1] );
+              // Affect energy
+              outputPulse->SetEnergy( sum_final_energy );
+          }
+
+
+          if (nVerboseLevel>1)
+              std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
+                        << "Resulting pulse is: \n"
+                        << *outputPulse << Gateendl << Gateendl ;
+          outputPulseList->push_back(outputPulse);
+      }
   }
 
   // Free temporary variables used by the centroid policy
@@ -274,6 +412,12 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
     free(final_crystal_posY);
     free(final_crystal_posZ);
     free(final_nb_pulses);
+  }
+
+  if (m_policy == READOUT_POLICY_PLASTIC)
+  {
+      free(plastic_energy);
+      free(plastic_pulses);
   }
   // Free other variables
   free(final_energy);

@@ -12,6 +12,7 @@ See LICENSE.md for further details
 #include "GateReadout.hh"
 #include "G4UIcmdWithAnInteger.hh"
 #include "G4UIcmdWithAString.hh"
+#include "G4UIcmdWithADouble.hh"
 
 GateReadoutMessenger::GateReadoutMessenger(GateReadout* itsReadout)
     : GatePulseProcessorMessenger(itsReadout)
@@ -33,10 +34,16 @@ GateReadoutMessenger::GateReadoutMessenger(GateReadout* itsReadout)
     cmdName = GetDirectoryName()+"setPolicy";
     SetPolicyCmd = new G4UIcmdWithAString(cmdName,this);
     SetPolicyCmd->SetGuidance("Defines the policy to be used to compute the final pulse position.");
-    SetPolicyCmd->SetGuidance("There are three options: 'TakeWinner', 'TakeEnergyCentroid1' and 'TakeEnergyCentroid2'");
+    SetPolicyCmd->SetGuidance("There are three options: 'TakeWinner', 'TakeEnergyCentroid1', 'TakeEnergyCentroid2' and 'PlasticForTheWinner' ");
     SetPolicyCmd->SetGuidance("  --> 'TakeEnergyWinner': the final position will be the one for which the maximum energy was deposited");
     SetPolicyCmd->SetGuidance("  --> 'TakeEnergyCentroid': the energy centroid is computed based on crystal indices, meaning that the 'crystal' component of the system must be used. The depth is thus ignored.");
     SetPolicyCmd->SetGuidance("Note: when using the energyCentroid policy, the mother volume of the crystal level MUST NOT have any other daughter volumes declared BEFORE the crystal. Declaring it after is not a problem though.");
+
+    cmdName = GetDirectoryName()+"setWinningEnergy";
+    SetEnergyCmd = new G4UIcmdWithADouble(cmdName,this);
+
+    cmdName = GetDirectoryName()+"setLayerName";
+    SetLayerNameCmd = new G4UIcmdWithAString(cmdName,this);
 }
 
 
@@ -52,6 +59,10 @@ void GateReadoutMessenger::SetNewValue(G4UIcommand* aCommand, G4String aString)
     { GetReadout()->SetDepth(SetDepthCmd->GetNewIntValue(aString)); }
   else if ( aCommand==SetPolicyCmd )
     { GetReadout()->SetPolicy(aString); }
+  else if ( aCommand==SetEnergyCmd )
+    { GetReadout()->SetEnergy(SetEnergyCmd->GetNewDoubleValue(aString)); }
+  else if ( aCommand==SetLayerNameCmd )
+    { GetReadout()->SetLayerName(aString); }
   else
     GatePulseProcessorMessenger::SetNewValue(aCommand,aString);
 }

@@ -21,6 +21,7 @@ See LICENSE.md for further details
 
 #define READOUT_POLICY_WINNER 0
 #define READOUT_POLICY_CENTROID 1
+#define READOUT_POLICY_PLASTIC 2
 
 class GateReadoutMessenger;
 class GateOutputVolumeID;
@@ -57,8 +58,13 @@ class GateReadout : public GateVPulseProcessor
     //! Set the depth of the readout
     inline void  SetDepth(G4int aDepth)         { m_depth = aDepth; }
 
+    inline void SetEnergy(G4double aEnergy) {m_energy = aEnergy;}
+
     //! Set the policy of the readout
     void SetPolicy(const G4String& aPolicy);
+
+    //! Set the policy of the readout
+    inline void SetLayerName(const G4String& a_layerName) {m_layerName = a_layerName;}
 
   protected:
     //! Implementation of the pure virtual method declared by the base class GateVPulseProcessor
@@ -85,6 +91,8 @@ class GateReadout : public GateVPulseProcessor
     G4int m_nbCrystalsXY;
     G4int m_systemDepth;
     G4int m_crystalDepth;
+    G4String m_layerName;
+    G4double m_energy;
     GateArrayComponent* m_crystalComponent;
 
     GateReadoutMessenger *m_messenger;	  //!< Messenger for this readout
