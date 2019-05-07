@@ -17,6 +17,7 @@ See LICENSE.md for further details
 #include "GateDigitizer.hh"
 #include "GateArrayComponent.hh"
 #include "GateVSystem.hh"
+#include <G4PhysicalVolumeModel.hh>
 
 /*
   S. Stute - June 2014: complete redesign of the readout module and add a new policy to emulate PMT.
@@ -324,9 +325,6 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
     }
   } // End for input pulse
 
-  if (final_nb_out_pulses > 0)
-      int nikos = 0;
-
   if (m_policy != READOUT_POLICY_PLASTIC)
   {
       // S. Stute: create now the output pulse list
@@ -366,56 +364,160 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
   {
       G4double sum_plastic_energy = 0.0;
       G4double sum_final_energy = 0.0;
-      GatePulse* outputPulse = NULL ;
 
       for(int p = 0; p < plastic_nb_out_pulses; p++)
-        sum_plastic_energy += plastic_energy[p];
+      {
+          // Get a pointer to the pulse
+          GatePulse *current_pulse = plastic_pulses[p];
+          bool found = false;
+
+          if (current_pulse->GetEnergy() > m_energy)
+          {
+
+              GateVolumeID pl_vol = current_pulse->GetVolumeID();
+//              G4String dd  = pl_vol.GetVolume(3)->GetName();
+//              G4int my_depth_id = pl_vol.GetVolume(m_depth);
+
+              for(int q = 0; q < final_nb_out_pulses; q++)
+              {
+                  // Get a pointer to the pulse
+                  GatePulse *current_other_pulse = final_pulses[q];
+
+                  if (pl_vol.GetVolume(m_depth) == current_other_pulse->GetVolumeID().GetVolume(m_depth) /*&&
+                          pl_vol.GetVolume(3) == current_other_pulse->GetVolumeID().GetVolume(3)*/) // Layer indipendent compare depths (module) and depth(-1) (Rsetcor)
+                  {
+                      G4double total_energy = current_pulse->GetEnergy() + current_other_pulse->GetEnergy();
+                      GatePulse* outputPulse = new GatePulse( *current_pulse );
+
+                      outputPulse->SetEnergy(total_energy);
+                      if (nVerboseLevel>1)
+                          std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
+                                    << "Resulting pulse is: \n"
+                                    << *outputPulse << Gateendl << Gateendl ;
+                      outputPulseList->push_back(outputPulse);
+                      found = true;
+                      break;
+                  }
+              }
+
+               if(!found)
+               {
+                   GatePulse* outputPulse = new GatePulse( *current_pulse );
+
+                   if (nVerboseLevel>1)
+                       std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
+                                 << "Resulting pulse is: \n"
+                                 << *outputPulse << Gateendl << Gateendl ;
+                   outputPulseList->push_back(outputPulse);
+               }
+          }
+      }
 
       for(int p = 0; p < final_nb_out_pulses; p++)
-        sum_final_energy += final_energy[p];
-
-      if (sum_final_energy >= 0.0 && sum_plastic_energy >= 0.0 )
       {
 
-          G4double total_energy = sum_final_energy + sum_plastic_energy;
+          GatePulse *current_pulse = final_pulses[p];
 
-          if (sum_plastic_energy >= m_energy) // This is a fast event
+          GateVolumeID pl_vol = current_pulse->GetVolumeID();
+
+          bool found = false;
+
+          for(int q = 0; q < plastic_nb_out_pulses; q++)
           {
-              if (plastic_nb_out_pulses > 0)
-              {
-              // Take the largest plastic pulse
-              // Create the pulse
-              outputPulse = new GatePulse( plastic_pulses[plastic_nb_out_pulses-1] );
-              // Affect energy
+                GatePulse *current_other_pulse = plastic_pulses[q];
 
-              outputPulse->SetEnergy( total_energy );
+                if (pl_vol.GetVolume(m_depth) == current_other_pulse->GetVolumeID().GetVolume(m_depth)) // Layer indipendent compare depths (module) and depth(-1) (Rsetcor)
+                {
+                    if (current_other_pulse->GetEnergy() < m_energy)
+                    {
+                        G4double total_energy = current_pulse->GetEnergy() + current_other_pulse->GetEnergy();
+                        GatePulse* outputPulse = new GatePulse( *current_pulse );
+
+                        outputPulse->SetEnergy(total_energy);
+                        if (nVerboseLevel>1)
+                            std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
+                                      << "Resulting pulse is: \n"
+                                      << *outputPulse << Gateendl << Gateendl ;
+                        outputPulseList->push_back(outputPulse);
+                        found = true;
+                        break;
+                    }
+                }
+
+          }
+
+          if (!found)
+          {
+              GatePulse* outputPulse = new GatePulse( *current_pulse );
 
               if (nVerboseLevel>1)
                   std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
                             << "Resulting pulse is: \n"
                             << *outputPulse << Gateendl << Gateendl ;
               outputPulseList->push_back(outputPulse);
-              }
           }
-          else // This a slow event
-          {
-              if (final_nb_out_pulses > 0)
-              {
-                  // Take the largest LYSO pulse
-                  // Create the pulse
-                  outputPulse = new GatePulse( final_pulses[final_nb_out_pulses-1] );
-                  // Affect energy
-                  outputPulse->SetEnergy( total_energy );
-
-                  if (nVerboseLevel>1)
-                      std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
-                                << "Resulting pulse is: \n"
-                                << *outputPulse << Gateendl << Gateendl ;
-                  outputPulseList->push_back(outputPulse);
-              }
-          }
-
       }
+
+
+
+//      // Now get the energy of plastic + LYSO layers of the same module
+//      // In each family the modules have been grouped already.
+
+//      // I aleady have the energy per module
+
+//      // find out if the modules in the plastic list match
+
+//// Do nor add again. The total deposition in all layers of the module has
+//      // been calculated already.
+////      for(int p = 0; p < plastic_nb_out_pulses; p++)
+////        sum_plastic_energy += plastic_energy[p];
+
+////      for(int p = 0; p < final_nb_out_pulses; p++)
+////        sum_final_energy += final_energy[p];
+
+
+//      if (sum_final_energy >= 0.0 && sum_plastic_energy >= 0.0 )
+//      {
+
+//          G4double total_energy = sum_final_energy + sum_plastic_energy;
+
+//          if (sum_plastic_energy >= m_energy) // This is a fast event
+//          {
+//              if (plastic_nb_out_pulses > 0)
+//              {
+//              // Take the largest plastic pulse
+//              // Create the pulse
+//              outputPulse = new GatePulse( plastic_pulses[plastic_nb_out_pulses] );
+//              // Affect energy
+
+//              outputPulse->SetEnergy( total_energy );
+
+//              if (nVerboseLevel>1)
+//                  std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
+//                            << "Resulting pulse is: \n"
+//                            << *outputPulse << Gateendl << Gateendl ;
+//              outputPulseList->push_back(outputPulse);
+//              }
+//          }
+//          else // This a slow event
+//          {
+//              if (final_nb_out_pulses > 0)
+//              {
+//                  // Take the largest LYSO pulse
+//                  // Create the pulse
+//                  outputPulse = new GatePulse( final_pulses[final_nb_out_pulses-1] );
+//                  // Affect energy
+//                  outputPulse->SetEnergy( total_energy );
+
+//                  if (nVerboseLevel>1)
+//                      std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
+//                                << "Resulting pulse is: \n"
+//                                << *outputPulse << Gateendl << Gateendl ;
+//                  outputPulseList->push_back(outputPulse);
+//              }
+//          }
+
+//      }
   }
 
   // Free temporary variables used by the centroid policy

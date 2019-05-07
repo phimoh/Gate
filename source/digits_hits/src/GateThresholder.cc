@@ -41,14 +41,17 @@ void GateThresholder::ProcessOnePulse(const GatePulse* inputPulse,GatePulseList&
     return;
   }
 
-  G4String LayerName = ((inputPulse->GetVolumeID()).GetBottomCreator())->GetObjectName();
-  if(LayerName != m_volumeName)
+  if (!m_volumeName.empty())
   {
-      if (nVerboseLevel>1)
-          G4cout << "[GateThresholder::ProcessOnePulse]: input pulse on different volume -> nothing to do\n\n";
-      GatePulse* outputPulse = new GatePulse(*inputPulse);
-      outputPulseList.push_back(outputPulse);
-      return;
+      G4String LayerName = ((inputPulse->GetVolumeID()).GetBottomCreator())->GetObjectName();
+      if(LayerName != m_volumeName)
+      {
+          if (nVerboseLevel>1)
+              G4cout << "[GateThresholder::ProcessOnePulse]: input pulse on different volume -> nothing to do\n\n";
+//          GatePulse* outputPulse = new GatePulse(*inputPulse);
+//          outputPulseList.push_back(outputPulse);
+          return;
+      }
   }
 
   if (inputPulse->GetEnergy()==0) {
