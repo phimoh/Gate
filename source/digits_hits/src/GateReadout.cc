@@ -240,8 +240,6 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
                   final_pulses[this_output_pulse] = inputPulse;
               final_energy[this_output_pulse] += inputPulse->GetEnergy();
           }
-
-        int nikos = 0;
       }
       // --------------------------------------------------------------------------------
       // EnergyCentroidPolicy1 (like block PMT)
@@ -362,47 +360,50 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
   }
   else
   {
-      G4double sum_plastic_energy = 0.0;
-      G4double sum_final_energy = 0.0;
-
       for(int p = 0; p < plastic_nb_out_pulses; p++)
       {
           // Get a pointer to the pulse
           GatePulse *current_pulse = plastic_pulses[p];
           bool found = false;
 
-          if (current_pulse->GetEnergy() > m_energy)
+          if (current_pulse->GetEnergy() >= m_energy)
           {
 
-              GateVolumeID pl_vol = current_pulse->GetVolumeID();
+              const GateOutputVolumeID& pl_vol = current_pulse->GetOutputVolumeID();
 //              G4String dd  = pl_vol.GetVolume(3)->GetName();
 //              G4int my_depth_id = pl_vol.GetVolume(m_depth);
+
+               G4double total_energy = current_pulse->GetEnergy();
+               GatePulse* outputPulse = NULL ;
 
               for(int q = 0; q < final_nb_out_pulses; q++)
               {
                   // Get a pointer to the pulse
                   GatePulse *current_other_pulse = final_pulses[q];
 
-                  if (pl_vol.GetVolume(m_depth) == current_other_pulse->GetVolumeID().GetVolume(m_depth) /*&&
+                  if (pl_vol.Top(m_depth) == current_other_pulse->GetOutputVolumeID().Top(m_depth) /*&&
                           pl_vol.GetVolume(3) == current_other_pulse->GetVolumeID().GetVolume(3)*/) // Layer indipendent compare depths (module) and depth(-1) (Rsetcor)
                   {
-                      G4double total_energy = current_pulse->GetEnergy() + current_other_pulse->GetEnergy();
-                      GatePulse* outputPulse = new GatePulse( *current_pulse );
+                      total_energy += current_other_pulse->GetEnergy();
 
-                      outputPulse->SetEnergy(total_energy);
-                      if (nVerboseLevel>1)
-                          std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
-                                    << "Resulting pulse is: \n"
-                                    << *outputPulse << Gateendl << Gateendl ;
-                      outputPulseList->push_back(outputPulse);
                       found = true;
-                      break;
+//                      break;
                   }
               }
 
-               if(!found)
+              if (found)
+              {
+                 outputPulse = new GatePulse( *current_pulse );
+                outputPulse->SetEnergy(total_energy);
+                if (nVerboseLevel>1)
+                    std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
+                              << "Resulting pulse is: \n"
+                              << *outputPulse << Gateendl << Gateendl ;
+                outputPulseList->push_back(outputPulse);
+              }
+               else
                {
-                   GatePulse* outputPulse = new GatePulse( *current_pulse );
+                  outputPulse = new GatePulse( *current_pulse );
 
                    if (nVerboseLevel>1)
                        std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
@@ -418,35 +419,41 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
 
           GatePulse *current_pulse = final_pulses[p];
 
-          GateVolumeID pl_vol = current_pulse->GetVolumeID();
+          const GateOutputVolumeID& pl_vol = current_pulse->GetOutputVolumeID();
 
           bool found = false;
+
+          G4double total_energy =  current_pulse->GetEnergy();
 
           for(int q = 0; q < plastic_nb_out_pulses; q++)
           {
                 GatePulse *current_other_pulse = plastic_pulses[q];
 
-                if (pl_vol.GetVolume(m_depth) == current_other_pulse->GetVolumeID().GetVolume(m_depth)) // Layer indipendent compare depths (module) and depth(-1) (Rsetcor)
+                if (pl_vol.Top(m_depth) == current_other_pulse->GetOutputVolumeID().Top(m_depth)) // Layer indipendent compare depths (module) and depth(-1) (Rsetcor)
                 {
                     if (current_other_pulse->GetEnergy() < m_energy)
                     {
-                        G4double total_energy = current_pulse->GetEnergy() + current_other_pulse->GetEnergy();
-                        GatePulse* outputPulse = new GatePulse( *current_pulse );
+                        total_energy += current_other_pulse->GetEnergy();
 
-                        outputPulse->SetEnergy(total_energy);
-                        if (nVerboseLevel>1)
-                            std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
-                                      << "Resulting pulse is: \n"
-                                      << *outputPulse << Gateendl << Gateendl ;
-                        outputPulseList->push_back(outputPulse);
                         found = true;
-                        break;
+//                        break;
                     }
                 }
 
           }
 
-          if (!found)
+          if (found)
+          {
+              GatePulse* outputPulse = new GatePulse( *current_pulse );
+
+              outputPulse->SetEnergy(total_energy);
+              if (nVerboseLevel>1)
+                  std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
+                            << "Resulting pulse is: \n"
+                            << *outputPulse << Gateendl << Gateendl ;
+              outputPulseList->push_back(outputPulse);
+          }
+          else
           {
               GatePulse* outputPulse = new GatePulse( *current_pulse );
 
