@@ -368,7 +368,6 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
       G4double sum_final_energy = 0.0;
       GatePulse* outputPulse = NULL ;
 
-
       for(int p = 0; p < plastic_nb_out_pulses; p++)
         sum_plastic_energy += plastic_energy[p];
 
@@ -378,29 +377,44 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
       if (sum_final_energy >= 0.0 && sum_plastic_energy >= 0.0 )
       {
 
-          if (sum_final_energy < sum_plastic_energy) // This is a fast event
+          G4double total_energy = sum_final_energy + sum_plastic_energy;
+
+          if (sum_plastic_energy >= m_energy) // This is a fast event
           {
+              if (plastic_nb_out_pulses > 0)
+              {
               // Take the largest plastic pulse
               // Create the pulse
               outputPulse = new GatePulse( plastic_pulses[plastic_nb_out_pulses-1] );
               // Affect energy
-              outputPulse->SetEnergy( sum_plastic_energy );
+
+              outputPulse->SetEnergy( total_energy );
+
+              if (nVerboseLevel>1)
+                  std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
+                            << "Resulting pulse is: \n"
+                            << *outputPulse << Gateendl << Gateendl ;
+              outputPulseList->push_back(outputPulse);
+              }
           }
           else // This a slow event
           {
-              // Take the largest LYSO pulse
-              // Create the pulse
-              outputPulse = new GatePulse( final_pulses[final_nb_out_pulses-1] );
-              // Affect energy
-              outputPulse->SetEnergy( sum_final_energy );
+              if (final_nb_out_pulses > 0)
+              {
+                  // Take the largest LYSO pulse
+                  // Create the pulse
+                  outputPulse = new GatePulse( final_pulses[final_nb_out_pulses-1] );
+                  // Affect energy
+                  outputPulse->SetEnergy( total_energy );
+
+                  if (nVerboseLevel>1)
+                      std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
+                                << "Resulting pulse is: \n"
+                                << *outputPulse << Gateendl << Gateendl ;
+                  outputPulseList->push_back(outputPulse);
+              }
           }
 
-
-          if (nVerboseLevel>1)
-              std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
-                        << "Resulting pulse is: \n"
-                        << *outputPulse << Gateendl << Gateendl ;
-          outputPulseList->push_back(outputPulse);
       }
   }
 
