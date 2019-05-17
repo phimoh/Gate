@@ -421,7 +421,7 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
 
           const GateOutputVolumeID& pl_vol = current_pulse->GetOutputVolumeID();
 
-          bool found = false;
+          int found = 0;
 
           G4double total_energy =  current_pulse->GetEnergy();
 
@@ -435,14 +435,18 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
                     {
                         total_energy += current_other_pulse->GetEnergy();
 
-                        found = true;
+                        found = 1;
 //                        break;
+                    }
+                    else if (current_other_pulse->GetEnergy() >= m_energy)
+                    {
+                        found = 0;
                     }
                 }
 
           }
 
-          if (found)
+          if (found == 1)
           {
               GatePulse* outputPulse = new GatePulse( *current_pulse );
 
@@ -453,7 +457,7 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
                             << *outputPulse << Gateendl << Gateendl ;
               outputPulseList->push_back(outputPulse);
           }
-          else
+          else if (found == 0)
           {
               GatePulse* outputPulse = new GatePulse( *current_pulse );
 
