@@ -375,50 +375,85 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
   }
   else
   {
-//      if (plastic_nb_out_pulses > 1)
-//      {
-//          for(int p = 0; p < plastic_nb_out_pulses; ++p)
-//          {
-//            std::cout << plastic_energy[p] << " @ " << plastic_pulses[p]->GetOutputVolumeID().Top(m_depth) <<  " @ ";
-//          }
-//           std::cout <<std::endl;
+      std::vector<int> commons(n_pulses);
+      if (plastic_nb_out_pulses == 0 &&
+              final_nb_out_pulses > 0)
+      {
+          for(int i = 0; i < final_nb_out_pulses; ++i)
+          {
+              GatePulse* outputPulse = new GatePulse( *final_pulses[i] );
 //      }
 
-      for(int p = 0; p < plastic_nb_out_pulses; ++p)
-      {
-          if (plastic_energy[p] >= m_energy)
-          {
-              // Get a pointer to the pulse
-              GatePulse *current_pulse = plastic_pulses[p];
-
-              G4double total_energy = current_pulse->GetEnergy();
-
-              for(int q = 0; q < final_nb_out_pulses; ++q)
-              {
-                  if (current_pulse->GetOutputVolumeID().Top(m_depth) ==
-                          final_pulses[q]->GetOutputVolumeID().Top(m_depth))
-                  {
-                      total_energy += final_pulses[q]->GetEnergy();
-//                      processed_pulses.push_back(q);
-                  }
-              }
-
-              GatePulse* outputPulse = new GatePulse( *current_pulse );
-              outputPulse->SetEnergy(total_energy);
               if (nVerboseLevel>1)
                   std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
                             << "Resulting pulse is: \n"
                             << *outputPulse << Gateendl << Gateendl ;
               outputPulseList->push_back(outputPulse);
-
           }
       }
 
-      for(int p = 0; p < final_nb_out_pulses; ++p)
+      if (final_nb_out_pulses == 0 &&
+              plastic_nb_out_pulses > 0)
       {
-          GatePulse *current_pulse = final_pulses[p];
+          for(int i = 0; i < plastic_nb_out_pulses; ++i)
+          {
+              GatePulse* outputPulse = new GatePulse( *plastic_pulses[i] );
 
-          G4double total_energy =  current_pulse->GetEnergy();
+              if (nVerboseLevel>1)
+                  std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
+                            << "Resulting pulse is: \n"
+                            << *outputPulse << Gateendl << Gateendl ;
+              outputPulseList->push_back(outputPulse);
+          }
+      }
+
+      // Energy sharing
+      if (plastic_nb_out_pulses > 0 &&
+              final_nb_out_pulses > 0)
+      {
+          for(int i = 0; i < plastic_nb_out_pulses; ++i)
+          {
+              const GateOutputVolumeID& blockID = plastic_pulses[i]->GetOutputVolumeID().Top(m_depth);
+              G4double total_energy = plastic_pulses[i]->GetEnergy();
+
+              for (int j = 0; j < final_nb_out_pulses; ++j)
+              {
+                  if (blockID ==
+                          final_pulses[j]->GetOutputVolumeID().Top(m_depth))
+                  {
+                      total_energy += final_pulses[j]->GetEnergy();
+                      commons.push_back(j);
+                      //break;
+                  }
+              }
+
+              if (plastic_pulses[i]->GetEnergy() > m_energy) // fast
+              {
+                  GatePulse* outputPulse = new GatePulse( *plastic_pulses[i] );
+                  outputPulse->SetEnergy(total_energy);
+                  if (nVerboseLevel>1)
+                      std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
+                                << "Resulting pulse is: \n"
+                                << *outputPulse << Gateendl << Gateendl ;
+                  outputPulseList->push_back(outputPulse);
+              }
+              else { //slow
+
+                  GatePulse* outputPulse = new GatePulse( *final_pulses[commons.at(commons.size()-1)] );
+                  outputPulse->SetEnergy(total_energy);
+                  if (nVerboseLevel>1)
+                      std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
+                                << "Resulting pulse is: \n"
+                                << *outputPulse << Gateendl << Gateendl ;
+                  outputPulseList->push_back(outputPulse);
+              }
+          }
+
+          for(int i = 0; i < final_nb_out_pulses; ++i)
+          {
+              bool skip = false;
+              for (int j = 0; j < commons.size(); ++j)
+                  if (i == commons.at(j))
 
           int found = 1;
 
@@ -428,20 +463,21 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
                       plastic_pulses[q]->GetOutputVolumeID().Top(m_depth))
               {
                     if (plastic_pulses[q]->GetEnergy() < m_energy)
-                    {
-                        total_energy += plastic_pulses[q]->GetEnergy();
+                  {
+                      skip = true;
                         found = 1;
                     }
                     else {
                         found = 0;
-                        break;
-                    }
+                      break;
+                  }
               }
           }
 
-          if(found)
-          {
-              GatePulse* outputPulse = new GatePulse( *current_pulse );
+              if (skip)
+                  continue;
+
+              GatePulse* outputPulse = new GatePulse( *final_pulses[i] );
 
               outputPulse->SetEnergy(total_energy);
               if (nVerboseLevel>1)
@@ -449,9 +485,12 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
                             << "Resulting pulse is: \n"
                             << *outputPulse << Gateendl << Gateendl ;
               outputPulseList->push_back(outputPulse);
-          }
 
+
+          }
       }
+
+  }
   }
 
   // Free temporary variables used by the centroid policy
