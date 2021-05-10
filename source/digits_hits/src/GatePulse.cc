@@ -177,6 +177,8 @@ std::ostream& operator<<(std::ostream& flux, const GatePulse& pulse)
 	  << "\t\t" << "Src           " << pulse.m_sourceID << " [ " << G4BestUnit(pulse.m_sourcePosition,"Length")     << "]\n"
       	  << "\t\t" << "Time          " << G4BestUnit(pulse.m_time,"Time")      	      	      	      	      	       << Gateendl
       	  << "\t\t" << "Energy        " << G4BestUnit(pulse.m_energy,"Energy")          	      	      	      	       << Gateendl
+             << "\t\t" << "Energy   in BGO     " << G4BestUnit(pulse.m_bgo_energy,"Energy")          	      	      	      	       << Gateendl
+                << "\t\t" << "Energy  in Plastic     " << G4BestUnit(pulse.m_plstc_energy,"Energy")          	      	      	      	       << Gateendl
       	  << "\t\t" << "localPos      [ " << G4BestUnit(pulse.m_localPos,"Length")        	      	      	      	<< "]\n"
       	  << "\t\t" << "globalPos     [ " << G4BestUnit(pulse.m_globalPos,"Length")   	      	      	      	      	<< "]\n"
        	  << "\t\t" << "           -> ( R="   << G4BestUnit(pulse.m_globalPos.perp(),"Length")     << ", "

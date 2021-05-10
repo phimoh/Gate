@@ -319,6 +319,8 @@ class GateRootCoincBuffer
     Float_t  sourcePosZ1;
     Double_t time1;
     Float_t  energy1;
+    Float_t energyBGO1;
+    Float_t energyPLSTC1;
     Float_t  globalPosX1;
     Float_t  globalPosY1;
     Float_t  globalPosZ1;
@@ -337,6 +339,8 @@ class GateRootCoincBuffer
     Float_t  sourcePosZ2;
     Double_t time2;
     Float_t  energy2;
+    Float_t energyBGO2;
+    Float_t energyPLSTC2;
     Float_t  globalPosX2;
     Float_t  globalPosY2;
     Float_t  globalPosZ2;

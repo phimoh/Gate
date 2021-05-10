@@ -445,6 +445,8 @@ void GateRootCoincBuffer::Clear()
   sourcePosZ1     = 0./mm;
   time1           = 0./s;
   energy1         = 0./MeV;
+  energyBGO1         = 0./MeV;
+  energyPLSTC1         = 0./MeV;
   globalPosX1     = 0./mm;
   globalPosY1     = 0./mm;
   globalPosZ1     = 0./mm;
@@ -464,6 +466,8 @@ void GateRootCoincBuffer::Clear()
   sourcePosZ2     = 0./mm;
   time2           = 0./s;
   energy2         = 0./MeV;
+  energyBGO2         = 0./MeV;
+  energyPLSTC2         = 0./MeV;
   globalPosX2     = 0./mm;
   globalPosY2     = 0./mm;
   globalPosZ2     = 0./mm;
@@ -494,6 +498,8 @@ void GateRootCoincBuffer::Fill(GateCoincidenceDigi* aDigi)
   sourcePosZ1    = (aDigi->GetPulse(0)).GetSourcePosition().z()/mm;
   time1          = (aDigi->GetPulse(0)).GetTime()/s;
   energy1        = (aDigi->GetPulse(0)).GetEnergy()/MeV;
+  energyBGO1        = (aDigi->GetPulse(0)).GetEnergyInBGO()/MeV;
+  energyPLSTC1        = (aDigi->GetPulse(0)).GetEnergyInPlstc()/MeV;
   globalPosX1    = (aDigi->GetPulse(0)).GetGlobalPos().x()/mm;
   globalPosY1    = (aDigi->GetPulse(0)).GetGlobalPos().y()/mm;
   globalPosZ1    = (aDigi->GetPulse(0)).GetGlobalPos().z()/mm;
@@ -514,6 +520,8 @@ void GateRootCoincBuffer::Fill(GateCoincidenceDigi* aDigi)
   sourcePosZ2    = (aDigi->GetPulse(1)).GetSourcePosition().z()/mm;
   time2          = (aDigi->GetPulse(1)).GetTime()/s;
   energy2        = (aDigi->GetPulse(1)).GetEnergy()/MeV;
+  energyBGO2        = (aDigi->GetPulse(1)).GetEnergyInBGO()/MeV;
+  energyPLSTC2        = (aDigi->GetPulse(1)).GetEnergyInPlstc()/MeV;
   globalPosX2    = (aDigi->GetPulse(1)).GetGlobalPos().x()/mm;
   globalPosY2    = (aDigi->GetPulse(1)).GetGlobalPos().y()/mm;
   globalPosZ2    = (aDigi->GetPulse(1)).GetGlobalPos().z()/mm;
@@ -597,6 +605,8 @@ void GateCoincTree::Init(GateRootCoincBuffer& buffer)
     Branch("time1",          &buffer.time1,"time1/D");
   if ( GateCoincidenceDigi::GetCoincidenceASCIIMask(7) )
     Branch("energy1",        &buffer.energy1,"energy1/F");
+  Branch("energyBGO1",        &buffer.energyBGO1,"energyBGO1/F");
+  Branch("energyPLSTC1",        &buffer.energyPLSTC1,"energyPLSTC1/F");
   if ( GateCoincidenceDigi::GetCoincidenceASCIIMask(8) )
     Branch("globalPosX1",    &buffer.globalPosX1,"globalPosX1/F");
   if ( GateCoincidenceDigi::GetCoincidenceASCIIMask(9) )
@@ -630,6 +640,8 @@ void GateCoincTree::Init(GateRootCoincBuffer& buffer)
     Branch("time2",          &buffer.time2,"time2/D");
   if ( GateCoincidenceDigi::GetCoincidenceASCIIMask(7) )
     Branch("energy2",        &buffer.energy2,"energy2/F");
+  Branch("energyBGO2",        &buffer.energyBGO2,"energyBGO2/F");
+  Branch("energyPLSTC2",        &buffer.energyPLSTC2,"energyPLSTC2/F");
   if ( GateCoincidenceDigi::GetCoincidenceASCIIMask(8) )
     Branch("globalPosX2",    &buffer.globalPosX2,"globalPosX2/F");
   if ( GateCoincidenceDigi::GetCoincidenceASCIIMask(9) )
