@@ -12,7 +12,7 @@ See LICENSE.md for further details
 #include "GateReadout.hh"
 #include "G4UIcmdWithAnInteger.hh"
 #include "G4UIcmdWithAString.hh"
-#include "G4UIcmdWithADouble.hh"
+#include "G4UIcmdWithADoubleAndUnit.hh"
 
 GateReadoutMessenger::GateReadoutMessenger(GateReadout* itsReadout)
     : GatePulseProcessorMessenger(itsReadout)
@@ -40,7 +40,8 @@ GateReadoutMessenger::GateReadoutMessenger(GateReadout* itsReadout)
     SetPolicyCmd->SetGuidance("Note: when using the energyCentroid policy, the mother volume of the crystal level MUST NOT have any other daughter volumes declared BEFORE the crystal. Declaring it after is not a problem though.");
 
     cmdName = GetDirectoryName()+"setWinningEnergy";
-    SetEnergyCmd = new G4UIcmdWithADouble(cmdName,this);
+    SetEnergyCmd = new G4UIcmdWithADoubleAndUnit(cmdName,this);
+    SetEnergyCmd->SetUnitCategory("Energy");
 
     cmdName = GetDirectoryName()+"setLayerName";
     SetLayerNameCmd = new G4UIcmdWithAString(cmdName,this);
