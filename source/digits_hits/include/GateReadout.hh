@@ -18,6 +18,8 @@ See LICENSE.md for further details
 #include "GateVPulseProcessor.hh"
 #include "GateVSystem.hh"
 #include "GateArrayComponent.hh"
+#include "GateVBlurringLaw.hh"
+#include "GateInverseSquareBlurringLaw.hh"
 
 #define READOUT_POLICY_WINNER 0
 #define READOUT_POLICY_CENTROID 1
@@ -66,6 +68,15 @@ class GateReadout : public GateVPulseProcessor
     //! Set the policy of the readout
     inline void SetLayerName(const G4String& a_layerName) {m_layerName = a_layerName;}
 
+    inline void SetEnergyResolutionCrystal(G4double aEnergyRes) {m_energy_res_crystal = aEnergyRes;}
+
+    inline void SetEnergyReferenceCrystal(G4double aEnergyRes) {m_energy_ref_crystal = aEnergyRes;}
+
+    inline void SetEnergyResolutionPlstc(G4double aEnergyRes) {m_energy_res_plstc = aEnergyRes;}
+
+    inline void SetEnergyReferencePlstc(G4double aEnergyRes) {m_energy_ref_plstc = aEnergyRes;}
+
+
   protected:
     //! Implementation of the pure virtual method declared by the base class GateVPulseProcessor
     //! This methods processes one input-pulse
@@ -93,7 +104,12 @@ class GateReadout : public GateVPulseProcessor
     G4int m_crystalDepth;
     G4String m_layerName;
     G4double m_energy;
+    G4double m_energy_res_crystal;
+    G4double m_energy_res_plstc;
+    G4double m_energy_ref_crystal;
+    G4double m_energy_ref_plstc;
     GateArrayComponent* m_crystalComponent;
+    GateVBlurringLaw* m_blurringLaw;
 
     GateReadoutMessenger *m_messenger;	  //!< Messenger for this readout
 };

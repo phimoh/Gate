@@ -13,6 +13,7 @@ See LICENSE.md for further details
 #include "G4UIcmdWithAnInteger.hh"
 #include "G4UIcmdWithAString.hh"
 #include "G4UIcmdWithADoubleAndUnit.hh"
+#include "G4UIcmdWithADouble.hh"
 
 GateReadoutMessenger::GateReadoutMessenger(GateReadout* itsReadout)
     : GatePulseProcessorMessenger(itsReadout)
@@ -45,6 +46,18 @@ GateReadoutMessenger::GateReadoutMessenger(GateReadout* itsReadout)
 
     cmdName = GetDirectoryName()+"setLayerName";
     SetLayerNameCmd = new G4UIcmdWithAString(cmdName,this);
+
+    cmdName = GetDirectoryName()+"setResolutionPlastic";
+    SetEnergyResPlstcCmd = new G4UIcmdWithADouble(cmdName,this);
+
+    cmdName = GetDirectoryName()+"setEnergyOfReferencePlastic";
+    SetEnergyRefPlstcCmd = new G4UIcmdWithADoubleAndUnit(cmdName,this);
+
+    cmdName = GetDirectoryName()+"setResolutionCrystal";
+    SetEnergyResXtalCmd = new G4UIcmdWithADouble(cmdName,this);
+
+    cmdName = GetDirectoryName()+"setEnergyOfReferenceCrystal";
+    SetEnergyRefXtalCmd = new G4UIcmdWithADoubleAndUnit(cmdName,this);
 }
 
 
@@ -64,6 +77,14 @@ void GateReadoutMessenger::SetNewValue(G4UIcommand* aCommand, G4String aString)
     { GetReadout()->SetEnergy(SetEnergyCmd->GetNewDoubleValue(aString)); }
   else if ( aCommand==SetLayerNameCmd )
     { GetReadout()->SetLayerName(aString); }
+  else if ( aCommand==SetEnergyResPlstcCmd )
+    { GetReadout()->SetEnergyResolutionPlstc(SetEnergyResPlstcCmd->GetNewDoubleValue(aString)); }
+  else if ( aCommand==SetEnergyRefPlstcCmd )
+    { GetReadout()->SetEnergyReferencePlstc(SetEnergyRefPlstcCmd->GetNewDoubleValue(aString)); }
+  else if ( aCommand==SetEnergyResXtalCmd )
+    { GetReadout()->SetEnergyResolutionCrystal(SetEnergyResXtalCmd->GetNewDoubleValue(aString)); }
+  else if ( aCommand==SetEnergyRefXtalCmd )
+    { GetReadout()->SetEnergyReferenceCrystal(SetEnergyRefXtalCmd->GetNewDoubleValue(aString)); }
   else
     GatePulseProcessorMessenger::SetNewValue(aCommand,aString);
 }

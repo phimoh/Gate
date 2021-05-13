@@ -18,6 +18,9 @@ See LICENSE.md for further details
 #include "GateArrayComponent.hh"
 #include "GateVSystem.hh"
 #include <G4PhysicalVolumeModel.hh>
+#include "GateConstants.hh"
+#include "Randomize.hh"
+
 
 /*
   S. Stute - June 2014: complete redesign of the readout module and add a new policy to emulate PMT.
@@ -53,6 +56,7 @@ GateReadout::GateReadout(GatePulseProcessorChain* itsChain,
     m_systemDepth  = -1;
     m_system = NULL;
     m_crystalComponent = NULL;
+    m_blurringLaw = new GateInverseSquareBlurringLaw(GetObjectName());
 }
 
 GateReadout::~GateReadout()
@@ -141,6 +145,9 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
     G4double* plastic_energy = NULL;
     GatePulse** plastic_pulses = NULL;
 
+    G4double* final_energy_blur = NULL;
+    G4double* plastic_energy_blur = NULL;
+
     if (m_policy==READOUT_POLICY_CENTROID)
     {
         final_time         = (G4double*)calloc(n_pulses,sizeof(G4double));
@@ -153,6 +160,8 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
     {
         plastic_energy = (G4double*)calloc(n_pulses,sizeof(G4double));
         plastic_pulses = (GatePulse**)calloc(n_pulses,sizeof(GatePulse*));
+        final_energy_blur = (G4double*)calloc(n_pulses,sizeof(G4double));
+        plastic_energy_blur = (G4double*)calloc(n_pulses,sizeof(G4double));
     }
     // S. Stute: we need energy to sum up correctly for all output pulses and affect only at the end.
     //           In previous versions, even for take Winner, the energy was affected online so the
@@ -166,15 +175,6 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
     // Start loop on input pulses
     GatePulseConstIterator iterIn;
     //  G4double refEnergy = 0.0;
-
-    //  for (iterIn = inputPulseList->begin() ; iterIn != inputPulseList->end() ; ++iterIn)
-    //  {
-    //    GatePulse* inputPulse = *iterIn;
-    //    refEnergy += inputPulse->GetEnergy();
-    //  }
-
-    //  refEnergy/=0.511;
-    //  m_energy  *= refEnergy;
 
     //  std::cout<<refEnergy << std::endl;
     for (iterIn = inputPulseList->begin() ; iterIn != inputPulseList->end() ; ++iterIn)
@@ -354,6 +354,17 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
         }
     } // End for input pulse
 
+        //    GatePulseList* inputBlurredPulseList = new GatePulseList(*inputPulseList);
+        // Apply energy resolution
+        // Caution: When applying energy spread to low energy values they can get negative values.
+        // Althought this values will be filtered out, in later steps, here, in the energy sharing
+        // they will be negative. Doesn't seem right to leave them negative ....
+
+        // Philipp: I would like to use m_blurringLaw, but I am not sure if we can apply GateInverseSquareBlurringLaw for both materials and for these low energies
+        // Maybe add LinearLaw and find some parameters..
+        // And i think maybe its better to apply the blurring on the plastic_energy and final_energy, just before setting the energies for the outPulses
+        // Should we compare plastic threshold with blurred energy or before blurring?
+
     if (m_policy != READOUT_POLICY_PLASTIC)
     {
         // S. Stute: create now the output pulse list
@@ -391,6 +402,21 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
     }
     else
     {
+        G4double m_coeff = m_energy_res_crystal * sqrt(m_energy_ref_crystal);
+        for (int p=0; p<final_nb_out_pulses; ++p)
+        {
+            G4double currentEnergy = final_energy[p];
+	        final_energy_blur[p]=G4RandGauss::shoot(currentEnergy,m_coeff*sqrt(currentEnergy)/GateConstants::fwhm_to_sigma);
+        }
+
+        m_coeff = m_energy_res_plstc * sqrt(m_energy_ref_plstc);
+
+        for(int i = 0; i < plastic_nb_out_pulses; ++i)
+        {
+            G4double currentEnergy = plastic_energy[i];
+	        plastic_energy_blur[i]=G4RandGauss::shoot(currentEnergy,m_coeff*sqrt(currentEnergy)/GateConstants::fwhm_to_sigma);
+        }
+
         std::vector<int> commons(n_pulses);
         if (plastic_nb_out_pulses == 0 &&
                 final_nb_out_pulses > 0)
@@ -398,8 +424,8 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
             for(int i = 0; i < final_nb_out_pulses; ++i)
             {
                 GatePulse* outputPulse = new GatePulse( *final_pulses[i] );
-                outputPulse->SetEnergy( final_energy[i] );
-                outputPulse->SetEnergyInBGO( final_energy[i] );
+                outputPulse->SetEnergy( final_energy_blur[i] );
+                outputPulse->SetEnergyInBGO( final_energy_blur[i] );
 
                 if (nVerboseLevel>1)
                     std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
@@ -414,11 +440,11 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
         {
             for(int i = 0; i < plastic_nb_out_pulses; ++i)
             {
-                if (plastic_energy[i] >= m_energy)
+                if (plastic_energy_blur[i] >= m_energy) // compare with plastic_energy or plastic_energy_blur?, for < m_energy only Plastic, no output Pulse created
                 {
                     GatePulse* outputPulse = new GatePulse( *plastic_pulses[i] );
-                    outputPulse->SetEnergy(plastic_energy[i]);
-                    outputPulse->SetEnergyInPlstc(plastic_energy[i]);
+                    outputPulse->SetEnergy(plastic_energy_blur[i]);
+                    outputPulse->SetEnergyInPlstc(plastic_energy_blur[i]);
 
                     if (nVerboseLevel>1)
                         std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
@@ -435,17 +461,17 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
         {
             for(int i = 0; i < plastic_nb_out_pulses; ++i)
             {
-                if (plastic_pulses[i]->GetEnergy() >= m_energy) // fast
+                if (plastic_energy_blur[i] >= m_energy) // fast, compare with plastic_energy or plastic_energy_blur?
                 {
                     const GateOutputVolumeID& blockID = plastic_pulses[i]->GetOutputVolumeID().Top(m_depth);
-                    G4double total_energy = plastic_energy[i];
+                    G4double total_energy = plastic_energy_blur[i];
 
                     for (int j = 0; j < final_nb_out_pulses; ++j)
                     {
                         if (blockID ==
                                 final_pulses[j]->GetOutputVolumeID().Top(m_depth))
                         {
-                            total_energy += final_energy[j];
+                            total_energy += final_energy_blur[j];
                             commons.push_back(j);
                             break;
                         }
@@ -453,8 +479,8 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
 
                     GatePulse* outputPulse = new GatePulse( *plastic_pulses[i] );
                     outputPulse->SetEnergy(total_energy);
-                    outputPulse->SetEnergyInPlstc(plastic_energy[i]);
-                    outputPulse->SetEnergyInBGO(total_energy - plastic_energy[i]);
+                    outputPulse->SetEnergyInPlstc(plastic_energy_blur[i]);
+                    outputPulse->SetEnergyInBGO(total_energy - plastic_energy_blur[i]);
                     if (nVerboseLevel>1)
                         std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
                                 << "Resulting pulse is: \n"
@@ -488,16 +514,16 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
                 //                  continue;
 
                 const GateOutputVolumeID& blockID = final_pulses[i]->GetOutputVolumeID().Top(m_depth);
-                G4double bgo_energy = final_energy[i];
+                G4double bgo_energy = final_energy_blur[i];
                 G4double total_energy = bgo_energy;
                 for(int j = 0; j < plastic_nb_out_pulses; ++j)
                 {
                     if (blockID ==
                             plastic_pulses[j]->GetOutputVolumeID().Top(m_depth))
                     {
-                        if (plastic_energy[j] < m_energy)
+                        if (plastic_energy_blur[j] < m_energy)
                         {
-                            total_energy += plastic_energy[j];
+                            total_energy += plastic_energy_blur[j];
                         }
                         else
                             skip = true;
@@ -538,10 +564,12 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
     {
         free(plastic_energy);
         free(plastic_pulses);
+        free(plastic_energy_blur);
     }
     // Free other variables
     free(final_energy);
     free(final_pulses);
+    free(final_energy_blur);
 
     if (nVerboseLevel==1)
     {
