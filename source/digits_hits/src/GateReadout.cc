@@ -399,6 +399,7 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
             {
                 GatePulse* outputPulse = new GatePulse( *final_pulses[i] );
                 outputPulse->SetEnergy( final_energy[i] );
+                outputPulse->SetEnergyInBGO( final_energy[i] );
 
                 if (nVerboseLevel>1)
                     std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
@@ -415,11 +416,9 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
             {
                 if (plastic_energy[i] >= m_energy)
                 {
-                    G4double total_energy = plastic_energy[i];
                     GatePulse* outputPulse = new GatePulse( *plastic_pulses[i] );
-                    outputPulse->SetEnergy(total_energy);
+                    outputPulse->SetEnergy(plastic_energy[i]);
                     outputPulse->SetEnergyInPlstc(plastic_energy[i]);
-                    outputPulse->SetEnergyInPlstc(total_energy - plastic_energy[i]);
 
                     if (nVerboseLevel>1)
                         std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
