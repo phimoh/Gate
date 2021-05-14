@@ -353,17 +353,7 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
             //      overall_nb_out_pulses++;
         }
     } // End for input pulse
-
-        //    GatePulseList* inputBlurredPulseList = new GatePulseList(*inputPulseList);
-        // Apply energy resolution
-        // Caution: When applying energy spread to low energy values they can get negative values.
-        // Althought this values will be filtered out, in later steps, here, in the energy sharing
-        // they will be negative. Doesn't seem right to leave them negative ....
-
-        // Philipp: I would like to use m_blurringLaw, but I am not sure if we can apply GateInverseSquareBlurringLaw for both materials and for these low energies
-        // Maybe add LinearLaw and find some parameters..
-        // And i think maybe its better to apply the blurring on the plastic_energy and final_energy, just before setting the energies for the outPulses
-        // Should we compare plastic threshold with blurred energy or before blurring?
+    
 
     if (m_policy != READOUT_POLICY_PLASTIC)
     {
@@ -460,18 +450,18 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
         {
             for(int i = 0; i < plastic_nb_out_pulses; ++i)
             {
-                if (plastic_energy_blur[i] >= m_energy) // compare with plastic_energy or plastic_energy_blur?, for < m_energy only Plastic, no output Pulse created
-                {
-                    GatePulse* outputPulse = new GatePulse( *plastic_pulses[i] );
-                    outputPulse->SetEnergy(plastic_energy_blur[i]);
-                    outputPulse->SetEnergyInPlstc(plastic_energy_blur[i]);
+                //if (plastic_energy_blur[i] >= m_energy) // compare with plastic_energy or plastic_energy_blur?, for < m_energy only Plastic, no output Pulse created
+                //{
+                GatePulse* outputPulse = new GatePulse( *plastic_pulses[i] );
+                outputPulse->SetEnergy(plastic_energy_blur[i]);
+                outputPulse->SetEnergyInPlstc(plastic_energy_blur[i]);
 
-                    if (nVerboseLevel>1)
-                        std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
-                                << "Resulting pulse is: \n"
-                                << *outputPulse << Gateendl << Gateendl ;
-                    outputPulseList->push_back(outputPulse);
-                }
+                if (nVerboseLevel>1)
+                    std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
+                            << "Resulting pulse is: \n"
+                            << *outputPulse << Gateendl << Gateendl ;
+                outputPulseList->push_back(outputPulse);
+                //}
             }
         }
 
@@ -481,7 +471,7 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
         {
             for(int i = 0; i < plastic_nb_out_pulses; ++i)
             {
-                if (plastic_energy_blur[i] >= m_energy) // fast, compare with plastic_energy or plastic_energy_blur?
+                if (plastic_energy_blur[i] >= m_energy) // fast
                 {
                     const GateOutputVolumeID& blockID = plastic_pulses[i]->GetOutputVolumeID().Top(m_depth);
                     G4double total_energy = plastic_energy_blur[i];
