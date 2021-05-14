@@ -406,7 +406,17 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
         for (int p=0; p<final_nb_out_pulses; ++p)
         {
             G4double currentEnergy = final_energy[p];
-	        final_energy_blur[p]=G4RandGauss::shoot(currentEnergy,m_coeff*sqrt(currentEnergy)/GateConstants::fwhm_to_sigma);
+            G4double tmp_energy = 0;
+            while (true) 
+            {
+                tmp_energy=G4RandGauss::shoot(currentEnergy,m_coeff*sqrt(currentEnergy)/GateConstants::fwhm_to_sigma);
+                if (tmp_energy > 0) 
+                {
+                    final_energy_blur[p]=tmp_energy;
+                    break;
+                }
+
+            }
         }
 
         m_coeff = m_energy_res_plstc * sqrt(m_energy_ref_plstc);
@@ -414,7 +424,17 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
         for(int i = 0; i < plastic_nb_out_pulses; ++i)
         {
             G4double currentEnergy = plastic_energy[i];
-	        plastic_energy_blur[i]=G4RandGauss::shoot(currentEnergy,m_coeff*sqrt(currentEnergy)/GateConstants::fwhm_to_sigma);
+            G4double tmp_energy = 0;
+            while (true) 
+            {
+                tmp_energy=G4RandGauss::shoot(currentEnergy,m_coeff*sqrt(currentEnergy)/GateConstants::fwhm_to_sigma);
+                if (tmp_energy > 0) 
+                {
+                    plastic_energy_blur[i]=tmp_energy;
+                    break;
+                }
+
+            }
         }
 
         std::vector<int> commons(n_pulses);
