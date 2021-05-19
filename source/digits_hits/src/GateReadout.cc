@@ -433,9 +433,16 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
         {
             for(int i = 0; i < final_nb_out_pulses; ++i)
             {
+                G4double bgo_energy = final_energy_blur[i];
                 GatePulse* outputPulse = new GatePulse( *final_pulses[i] );
-                outputPulse->SetEnergy( final_energy_blur[i] );
-                outputPulse->SetEnergyInBGO( final_energy_blur[i] );
+                outputPulse->SetEnergy( bgo_energy );
+                outputPulse->SetEnergyInBGO( bgo_energy );
+
+                // hard-code DTR as function of plastic_energy
+                plastic_energy = 0; // 0 since no plastic pulse 
+                G4double dtr = 0 / sqrt(2); // replace 0 by CTR function of plastic_energy from Fiammetta
+                G4double sigma =  dtr / GateConstants::fwhm_to_sigma;
+                outputPulse->SetTime(G4RandGauss::shoot(outputPulse->GetTime(), sigma));
 
                 if (nVerboseLevel>1)
                     std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
@@ -450,11 +457,15 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
         {
             for(int i = 0; i < plastic_nb_out_pulses; ++i)
             {
-                //if (plastic_energy_blur[i] >= m_energy) // compare with plastic_energy or plastic_energy_blur?, for < m_energy only Plastic, no output Pulse created
-                //{
+                G4double plastic_energy = plastic_energy_blur[i];
                 GatePulse* outputPulse = new GatePulse( *plastic_pulses[i] );
-                outputPulse->SetEnergy(plastic_energy_blur[i]);
-                outputPulse->SetEnergyInPlstc(plastic_energy_blur[i]);
+                outputPulse->SetEnergy(plastic_energy);
+                outputPulse->SetEnergyInPlstc(plastic_energy);
+
+                // hard-code DTR as function of plastic_energy
+                G4double dtr = 0 / sqrt(2); // replace 0 by CTR function of plastic_energy from Fiammetta
+                G4double sigma =  dtr / GateConstants::fwhm_to_sigma;
+                outputPulse->SetTime(G4RandGauss::shoot(outputPulse->GetTime(), sigma));
 
                 if (nVerboseLevel>1)
                     std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
@@ -474,23 +485,30 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
                 if (plastic_energy_blur[i] >= m_energy) // fast
                 {
                     const GateOutputVolumeID& blockID = plastic_pulses[i]->GetOutputVolumeID().Top(m_depth);
-                    G4double total_energy = plastic_energy_blur[i];
+                    G4double plastic_energy = plastic_energy_blur[i];
+                    G4double total_energy = plastic_energy;
 
                     for (int j = 0; j < final_nb_out_pulses; ++j)
                     {
                         if (blockID ==
                                 final_pulses[j]->GetOutputVolumeID().Top(m_depth))
-                        {
+                        {   
                             total_energy += final_energy_blur[j];
                             commons.push_back(j);
                             break;
                         }
                     }
-
+                    G4double bgo_energy = total_energy - plastic_energy;
                     GatePulse* outputPulse = new GatePulse( *plastic_pulses[i] );
                     outputPulse->SetEnergy(total_energy);
-                    outputPulse->SetEnergyInPlstc(plastic_energy_blur[i]);
-                    outputPulse->SetEnergyInBGO(total_energy - plastic_energy_blur[i]);
+                    outputPulse->SetEnergyInPlstc(plastic_energy);
+                    outputPulse->SetEnergyInBGO(bgo_energy);
+
+                    // hard-code DTR as function of plastic_energy
+                    G4double dtr = 0 / sqrt(2); // replace 0 by CTR function of plastic_energy from Fiammetta
+                    G4double sigma =  dtr / GateConstants::fwhm_to_sigma;
+                    outputPulse->SetTime(G4RandGauss::shoot(outputPulse->GetTime(), sigma));
+
                     if (nVerboseLevel>1)
                         std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
                                 << "Resulting pulse is: \n"
@@ -543,10 +561,18 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
 
                 if (!skip)
                 {
+                    G4double plastic_energy = total_energy - bgo_energy;
                     GatePulse* outputPulse = new GatePulse( *final_pulses[i] );
                     outputPulse->SetEnergy(total_energy);
                     outputPulse->SetEnergyInBGO(bgo_energy);
-                    outputPulse->SetEnergyInPlstc(total_energy - bgo_energy);
+                    outputPulse->SetEnergyInPlstc(plastic_energy);
+
+                    // hard-code DTR as function of plastic_energy
+                    G4double dtr = 0 / sqrt(2); // replace 0 by CTR function of plastic_energy from Fiammetta
+                    G4double sigma =  dtr / GateConstants::fwhm_to_sigma;
+                    outputPulse->SetTime(G4RandGauss::shoot(outputPulse->GetTime(), sigma));
+
+
                     if (nVerboseLevel>1)
                         std::cout << "Created new pulse for block " << outputPulse->GetOutputVolumeID().Top(m_depth) << ".\n"
                                 << "Resulting pulse is: \n"
