@@ -643,9 +643,9 @@ G4double ctr_analytic(G4double energy_bgo, G4double energy_pl)
 {  
     energy_bgo *= 1000;  // keV
     energy_pl *= 1000; // keV
-    G4double fwhm_pl = 94; // ps at 340 with 3x3x15 EJ232
+    G4double fwhm_pl = 127; // ps at 340 with 3x3x15 EJ232
     G4double eref_pl = 340;
-    G4double fwhm_bgo = 235; // ps at 511 with 3x3x15 BGO
+    G4double fwhm_bgo = 293; // ps at 511 with 3x3x15 BGO
     G4double eref_bgo = 511;
     G4double n_pl = 1.58; // refractive index
     G4double n_bgo = 2.4;
@@ -664,9 +664,6 @@ G4double ctr_analytic(G4double energy_bgo, G4double energy_pl)
     G4double ctr_total_analytic = 0;
     G4double doi_est_total = 0;
     G4double ctr_overall = 0;
-
-    G4double scale_pl = 0.1; // 0.8
-    G4double scale_doi = 10; // 4
     
     if (energy_pl == 0 && energy_bgo !=0) 
     {
@@ -687,9 +684,9 @@ G4double ctr_analytic(G4double energy_bgo, G4double energy_pl)
         ctr_pl = ctr_wo_doi_pl / sqrt(ratio_pl);
         ctr_bgo = ctr_wo_doi_bgo / sqrt(ratio_bgo);
 
-        ctr_total_analytic = 1/sqrt(1/pow(ctr_bgo,2) + 1 * scale_pl /pow(ctr_pl,2));
+        ctr_total_analytic = 1/sqrt(1/pow(ctr_bgo,2) + 1 * 1 /pow(ctr_pl,2));
 
-        doi_est_total = (ratio_pl * scale_doi * doi_contr_pl + ratio_bgo * doi_contr_bgo) / (ratio_pl + ratio_bgo);
+        doi_est_total = (ratio_pl  * doi_contr_pl + ratio_bgo * doi_contr_bgo) / (ratio_pl + ratio_bgo);
         
         ctr_overall = sqrt(pow(ctr_total_analytic,2) + pow(doi_est_total,2));
 
