@@ -20,7 +20,7 @@ See LICENSE.md for further details
 #include <G4PhysicalVolumeModel.hh>
 #include "GateConstants.hh"
 #include "Randomize.hh"
-
+#include <fstream>
 
 /*
   S. Stute - June 2014: complete redesign of the readout module and add a new policy to emulate PMT.
@@ -118,8 +118,33 @@ void GateReadout::SetPolicy(const G4String& aPolicy)
 //           This is only to be able to program the option EnergyCentroid based on crystal indices.
 //           So the ProcessOnePulse method right after this one is not used anymore.
 //           Note: this new strategy also allowed us to correct the bug for the energyWinner policy.
+
+G4double ctr_analytic(G4double energy_bgo, G4double energy_pl);
+bool test = true;
+//G4double plastic_energy_test = NULL;
+//G4double bgo_energy_test = NULL;
+
 GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList)
 {
+    if (test == true)
+    {   std::ofstream myfile;
+        myfile.open("ctr_test.txt");
+        myfile << "plastic energy" << " " << "bgo energy"<< " " << "ctr" << "\n";
+
+        G4double plastic_energy_test = 0.;
+        G4double bgo_energy_test = 0;
+        G4double ctr_test = 0.;
+
+        for (int i = 0; i<512; i++)
+        {   
+            plastic_energy_test = G4double(i)/1000;
+            bgo_energy_test = 0.511 - plastic_energy_test;
+            ctr_test = ctr_analytic(bgo_energy_test, plastic_energy_test);
+            myfile << plastic_energy_test << " " << bgo_energy_test << " " <<  ctr_test << "\n";
+        }
+        myfile.close();
+        return 0;
+    }
     if (!inputPulseList)
         return 0;
 
@@ -148,7 +173,6 @@ GatePulseList* GateReadout::ProcessPulseList(const GatePulseList* inputPulseList
     G4double* final_energy_blur = NULL;
     G4double* plastic_energy_blur = NULL;
 
-    G4double ctr_analytic(G4double energy_bgo, G4double energy_pl);
 
     if (m_policy==READOUT_POLICY_CENTROID)
     {
@@ -641,23 +665,23 @@ void GateReadout::DescribeMyself(size_t indent)
 
 G4double ctr_analytic(G4double energy_bgo, G4double energy_pl) 
 {  
-    energy_bgo *= 1000;  // keV
-    energy_pl *= 1000; // keV
+    energy_bgo*=1000;
+    energy_pl*=1000;
+
     G4double fwhm_pl = 127; // ps at 340 with 3x3x15 EJ232
     G4double eref_pl = 340;
     G4double fwhm_bgo = 293; // ps at 511 with 3x3x15 BGO
     G4double eref_bgo = 511;
-    G4double n_pl = 1.58; // refractive index
-    G4double n_bgo = 2.4;
-    G4double l = 15; // length of heterostructure in mm
 
+    G4double n_bgo = 2.4;
     G4double ratio_bgo = energy_bgo / eref_bgo;
-    G4double doi_contr_bgo = (n_bgo / 0.3 - 1 / 0.3) * l;
-    G4double ctr_wo_doi_bgo =sqrt(pow(fwhm_bgo, 2) - pow(doi_contr_bgo, 2));
+    G4double doi_contr_bgo = (n_bgo / 0.3 - 1 / 03.) * 15;
+    G4double ctr_wo_doi_bgo = sqrt(pow(fwhm_bgo, 2) - pow(doi_contr_bgo,2));
     
+    G4double n_pl = 1.58;
     G4double ratio_pl = energy_pl / eref_pl;
-    G4double doi_contr_pl = (n_pl / 0.3 - 1 / 0.3) * l;
-    G4double ctr_wo_doi_pl = sqrt(pow(fwhm_pl, 2) - pow(doi_contr_pl, 2));
+    G4double doi_contr_pl = (n_pl / 0.3 - 1 / 03.) * 15;
+    G4double ctr_wo_doi_pl = sqrt(pow(fwhm_pl, 2) - pow(doi_contr_pl,2));;
 
     G4double ctr_bgo = 0;
     G4double ctr_pl = 0;
@@ -665,32 +689,33 @@ G4double ctr_analytic(G4double energy_bgo, G4double energy_pl)
     G4double doi_est_total = 0;
     G4double ctr_overall = 0;
     
-    if (energy_pl == 0 && energy_bgo !=0) 
+    if (energy_pl == 0. && energy_bgo !=0.) 
     {
         ctr_bgo = ctr_wo_doi_bgo / sqrt(ratio_bgo);
         
         ctr_overall = sqrt(pow(ctr_bgo, 2) + pow(doi_contr_bgo, 2));
 
     }    
-    else if (energy_bgo == 0 && energy_pl !=0)
+    else if (energy_bgo == 0. && energy_pl !=0.)
     {
         ctr_pl = ctr_wo_doi_pl / sqrt(ratio_pl);
         
         ctr_overall = sqrt(pow(ctr_pl,2) + pow(doi_contr_pl, 2));
     }
         
-    else if (energy_bgo > 0 && energy_pl >0)
+    else 
     {
         ctr_pl = ctr_wo_doi_pl / sqrt(ratio_pl);
         ctr_bgo = ctr_wo_doi_bgo / sqrt(ratio_bgo);
 
-        ctr_total_analytic = 1/sqrt(1/pow(ctr_bgo,2) + 1 * 1 /pow(ctr_pl,2));
+        ctr_total_analytic = 1/sqrt(1/pow(ctr_bgo,2) + 1 /pow(ctr_pl,2));
 
         doi_est_total = (ratio_pl  * doi_contr_pl + ratio_bgo * doi_contr_bgo) / (ratio_pl + ratio_bgo);
         
         ctr_overall = sqrt(pow(ctr_total_analytic,2) + pow(doi_est_total,2));
 
     }         
+
     return ctr_overall * pow(10,-12); // in s
 }
 
