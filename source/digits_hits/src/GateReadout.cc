@@ -120,7 +120,7 @@ void GateReadout::SetPolicy(const G4String& aPolicy)
 //           Note: this new strategy also allowed us to correct the bug for the energyWinner policy.
 
 G4double ctr_analytic(G4double energy_bgo, G4double energy_pl);
-bool test = true;
+bool test = false; // true for testing 
 //G4double plastic_energy_test = NULL;
 //G4double bgo_energy_test = NULL;
 
@@ -716,6 +716,6 @@ G4double ctr_analytic(G4double energy_bgo, G4double energy_pl)
 
     }         
 
-    return ctr_overall * pow(10,-12); // in s
+    return ctr_overall * pow(10,-3); // in ns
 }
 
