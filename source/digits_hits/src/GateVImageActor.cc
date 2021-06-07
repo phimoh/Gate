@@ -259,6 +259,8 @@ void GateVImageActor::SetStepHitType(G4String t)
   if (t == "post")   { mStepHitType = PostStepHitType; return; }
   if (t == "middle") { mStepHitType = MiddleStepHitType; return; }
   if (t == "random") { mStepHitType = RandomStepHitType; return; }
+  if (t == "randomCylindricalCS") { mStepHitType = RandomStepHitTypeCylindricalCS; return;}
+  if (t == "postCylindricalCS") { mStepHitType = PostStepHitTypeCylindricalCS; return;}
 
   GateError("GateVImageActor -- SetStepHitType: StepHitType is set to '" << t << "' while I only know 'pre', 'post', 'random' or 'middle'.");
 }
@@ -324,7 +326,7 @@ int GateVImageActor::GetIndexFromTrackPosition(const GateVVolume * v , const G4T
   int maxDepth = theTouchable->GetHistoryDepth();
   G4LogicalVolume * currentVol = theTouchable->GetVolume(0)->GetLogicalVolume();
 
-  GateDebugMessage("Track",3,"GateVImageActor -- GetIndexFromStepPosition: Step in "<<currentVol->GetName()<<" - Max Depth = "<<maxDepth
+  GateDebugMessage("Track",3,"GateVImageActor -- GetIndexFromTrackPosition: Step in "<<currentVol->GetName()<<" - Max Depth = "<<maxDepth
                                                                       <<" -> target = "<<v->GetLogicalVolume()->GetName()<< Gateendl );
   int depth = 0;
   int transDepth = maxDepth;
@@ -340,17 +342,17 @@ int GateVImageActor::GetIndexFromTrackPosition(const GateVVolume * v , const G4T
 
   // GateError( "currentVol : "<< currentVol->GetName()<<"    Logical Volume "<< v->GetLogicalVolume()->GetName()<<" not found!" );
 
-  GateDebugMessage("Step",3,"GateVImageActor -- GetIndexFromStepPosition: Logical volume "<<currentVol->GetName() <<" found! - Depth = "<<depth << Gateendl );
+  GateDebugMessage("Step",3,"GateVImageActor -- GetIndexFromTrackPosition: Logical volume "<<currentVol->GetName() <<" found! - Depth = "<<depth << Gateendl );
 
   G4ThreeVector position = theTouchable->GetHistory()->GetTransform(transDepth).TransformPoint(tmpPosition);
 
 
   if (mPositionIsSet) {
-    GateDebugMessage("Track", 3, "GateVImageActor -- GetIndexFromStepPosition: Track position (vol reference) = " << position << Gateendl);
+    GateDebugMessage("Track", 3, "GateVImageActor -- GetIndexFromTrackPosition: Track position (vol reference) = " << position << Gateendl);
     position -= mPosition;
   }
 
-  GateDebugMessage("Track", 3, "GateVImageActor -- GetIndexFromStepPosition: Track position = " << position << Gateendl);
+  GateDebugMessage("Track", 3, "GateVImageActor -- GetIndexFromTrackPosition: Track position = " << position << Gateendl);
   int index = mImage.GetIndexFromPosition(position);
   return index;
 }
@@ -359,6 +361,19 @@ int GateVImageActor::GetIndexFromTrackPosition(const GateVVolume * v , const G4T
 
 //-----------------------------------------------------------------------------
 int GateVImageActor::GetIndexFromStepPosition(const GateVVolume * v, const G4Step * step)
+{
+  return GetIndexFromStepPosition2(v, step, mImage, mPositionIsSet, mPosition, mStepHitType);
+}
+//-----------------------------------------------------------------------------
+
+
+//-----------------------------------------------------------------------------
+int GateVImageActor::GetIndexFromStepPosition2(const GateVVolume * v,
+                                               const G4Step * step,
+                                               const GateImage & image,
+                                               const bool mPositionIsSet,
+                                               const G4ThreeVector mPosition,
+                                               const StepHitType mStepHitType)
 {
   if(v==0) return -1;
 
@@ -410,18 +425,18 @@ int GateVImageActor::GetIndexFromStepPosition(const GateVVolume * v, const G4Ste
   if (mStepHitType == PreStepHitType) {
     //index = mImage.GetIndexFromPrePosition(prePosition, postPosition);
     G4ThreeVector direction = postPosition - prePosition;
-    index = mImage.GetIndexFromPostPositionAndDirection(prePosition, direction);
-    //TODO Brent index = mImage.GetIndexFromPostPositionAndDirection(R x prePosition, direction);
+    index = image.GetIndexFromPostPositionAndDirection(prePosition, direction);
+    //TODO Brent index = image.GetIndexFromPostPositionAndDirection(R x prePosition, direction);
   }
   if (mStepHitType == PostStepHitType) {
     G4ThreeVector direction = postPosition - prePosition;
-    index = mImage.GetIndexFromPostPositionAndDirection(postPosition, direction);
+    index = image.GetIndexFromPostPositionAndDirection(postPosition, direction);
   }
   if (mStepHitType == MiddleStepHitType) {
     G4ThreeVector middle = prePosition + postPosition;
     middle/=2.;
     GateDebugMessage("Step", 4, "GateVImageActor -- GetIndexFromStepPosition:\tMiddleStep  = " << middle << Gateendl);
-    index = mImage.GetIndexFromPosition(middle);
+    index = image.GetIndexFromPosition(middle);
   }
   if (mStepHitType == RandomStepHitType) {
     G4double x = G4UniformRand();
@@ -432,9 +447,22 @@ int GateVImageActor::GetIndexFromStepPosition(const GateVVolume * v, const G4Ste
     //GateDebugMessageCont("Step", 4, "\tdirection = " << direction << Gateendl);
     G4ThreeVector position = prePosition + x*direction;
     GateDebugMessage("Step", 4, "GateVImageActor -- GetIndexFromStepPosition:\tRandomStep = " << position << Gateendl);
-    index = mImage.GetIndexFromPosition(position);
+    index = image.GetIndexFromPosition(position);
   }
-
+ if (mStepHitType == RandomStepHitTypeCylindricalCS) {
+    G4double x = G4UniformRand();
+    GateDebugMessage("Step", 4, "GateVImageActor -- GetIndexFromStepPosition:\tx         = " << x << Gateendl);
+    G4ThreeVector direction = postPosition-prePosition;
+    GateDebugMessageCont("Step", 4, "GateVImageActor -- GetIndexFromStepPosition:\tdirection = " << direction << Gateendl);
+    //normalize(direction);
+    //GateDebugMessageCont("Step", 4, "\tdirection = " << direction << Gateendl);
+    G4ThreeVector position = prePosition + x*direction;
+    GateDebugMessage("Step", 4, "GateVImageActor -- GetIndexFromStepPosition:\tRandomStep = " << position << Gateendl);
+    index = image.GetIndexFromPositionCylindricalCS(position);
+  }
+  if (mStepHitType == PostStepHitTypeCylindricalCS) {
+    index = image.GetIndexFromPositionCylindricalCS(postPosition);
+  }
   GateDebugMessage("Step", 4, "GateVImageActor -- GetIndexFromStepPosition:\tVoxel index = " << index << Gateendl);
   return index;
 }

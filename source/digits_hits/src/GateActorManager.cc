@@ -98,6 +98,7 @@ void GateActorManager::CreateListsOfEnabledActors()
     if ((*sit)->IsEndOfEventActionEnabled()       && IsInitialized<2) theListOfActorsEnabledForEndOfEvent.push_back( (*sit) );
     if ((*sit)->IsPreUserTrackingActionEnabled()  && IsInitialized<2) theListOfActorsEnabledForPreUserTrackingAction.push_back( (*sit) );
     if ((*sit)->IsPostUserTrackingActionEnabled() && IsInitialized<2) theListOfActorsEnabledForPostUserTrackingAction.push_back( (*sit) );
+    if ((*sit)->IsRecordEndOfAcquisitionEnabled() && IsInitialized<2) theListOfActorsEnabledForRecordEndOfAcquisition.push_back( (*sit) );
 
     //GateMessage("Core", 0, "IsUserSteppingActionEnabled = " << (*sit)->IsUserSteppingActionEnabled() << Gateendl);
 
@@ -230,6 +231,20 @@ void GateActorManager::UserSteppingAction(const G4Step* step)
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+void GateActorManager::RecordEndOfAcquisition()
+{
+  std::vector<GateVActor*>::iterator sit;
+  // GateDebugMessage("Actor", 1, "list = " << theListOfActorsEnabledForUserSteppingAction.size() << Gateendl);
+  for (sit = theListOfActorsEnabledForRecordEndOfAcquisition.begin(); sit!=theListOfActorsEnabledForRecordEndOfAcquisition.end(); ++sit)
+    {
+      // GateDebugMessage("Actor", 1, "Step for " << (*sit)->GetObjectName());
+      (*sit)->RecordEndOfAcquisition();
+    }
+}
+//-----------------------------------------------------------------------------
+
+
+//-----------------------------------------------------------------------------
 void GateActorManager::SetMultiFunctionalDetector(GateVActor * actor, GateVVolume * volume)
 {
   GateDebugMessageInc("Actor",4,"Actor Manager -- SetMFD -- begin "<<volume->GetLogicalVolume()<< Gateendl);
@@ -269,6 +284,11 @@ void GateActorManager::SetMultiFunctionalDetector(GateVActor * actor, GateVVolum
       num << nActor;
       G4String detectorName = "MFD_"+ num.str();
       G4String detectorName2 = "MSD_"+ num.str();
+
+      // Remove attached SD by replacing with a deactivated clone SD
+      G4VSensitiveDetector* replacementSD = volume->GetLogicalVolume()->GetSensitiveDetector()->Clone();
+      G4SDManager::GetSDMpointer()->AddNewDetector(replacementSD);
+      replacementSD->Activate(false);
 
       theListOfMultiSensitiveDetector.push_back(new GateMultiSensitiveDetector(detectorName2));
 

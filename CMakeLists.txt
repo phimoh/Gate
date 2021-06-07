@@ -1,7 +1,9 @@
 #=========================================================
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.12.0 FATAL_ERROR)
 CMAKE_POLICY(SET CMP0012 NEW)
 CMAKE_POLICY(SET CMP0025 NEW)
+CMAKE_POLICY(SET CMP0057 NEW)
+CMAKE_POLICY(SET CMP0072 NEW)
 
 #=========================================================
 PROJECT(Gate)
@@ -28,12 +30,32 @@ MACRO (DD in)
 ENDMACRO(DD)
 
 #=========================================================
+# Do not use RPATH for Mac, it fails to run Gate when install it
+IF (APPLE)
+  SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH ON)
+ENDIF()
+
+#=========================================================
 # Default build type
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release CACHE STRING
     "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
     FORCE)
 ENDIF(NOT CMAKE_BUILD_TYPE)
+
+#=========================================================
+# Native compilation
+OPTION(GATE_COMPILE_WITH_NATIVE "Build with -march=native (works if build type is Release)" OFF)
+IF(UNIX AND GATE_COMPILE_WITH_NATIVE)
+  string(FIND ${CMAKE_CXX_FLAGS_RELEASE} -march=native pos_march_cxx)
+  string(FIND ${CMAKE_C_FLAGS_RELEASE} -march=native pos_march_c)
+  IF(${pos_march_cxx} EQUAL -1)
+    SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
+  ENDIF() 
+  IF(${pos_march_c} EQUAL -1)
+    SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -march=native")
+  ENDIF()
+ENDIF(UNIX AND GATE_COMPILE_WITH_NATIVE)
 
 #=========================================================
 # Option to use visualisation feature of G4
@@ -75,8 +97,8 @@ STRING(REGEX REPLACE "(.*)[.](.*)[.](.*)" "\\3" G4VERSION_PATCH ${Geant4_VERSION
 #MESSAGE(${G4VERSION_MAJOR})
 #MESSAGE(${G4VERSION_MINOR})
 #MESSAGE(${G4VERSION_PATCH})
-IF(NOT ${G4VERSION_MAJOR}.${G4VERSION_MINOR} EQUAL 10.4 AND NOT ${G4VERSION_MAJOR}.${G4VERSION_MINOR} EQUAL 10.5)
-  MESSAGE("Warning! GATE version 8.2 is not validated for Geant4 ${G4VERSION_MAJOR}.${G4VERSION_MINOR} distribution. Please use Geant4 10.4 or 10.5 distribution instead.")
+IF(NOT ${G4VERSION_MAJOR}.${G4VERSION_MINOR} EQUAL 10.7)
+  MESSAGE("Warning! GATE version 9.1 is not validated for Geant4 ${G4VERSION_MAJOR}.${G4VERSION_MINOR} distribution. Please use Geant4 10.7 distribution instead.")
 ENDIF()
 
 #=========================================================
@@ -91,7 +113,10 @@ OPTION(GATE_USE_DAVIS "Gate use Davis LUT model" OFF)
 OPTION(GATE_USE_LMF "Gate use LMF" OFF)
 OPTION(GATE_USE_ECAT7 "Gate use ECAT7" OFF)
 OPTION(GATE_USE_SYSTEM_CLHEP "If 'ON', Gate does not use the standard CLHEP of GEANT4. Use OFF if you compile G4 with embedded CLHEP" OFF)
-OPTION(GATE_USE_GPU "Gate use GPU (voxelized source and tracking), need CUDA " OFF)
+
+#=========================================================
+# Option for libTorch
+OPTION(GATE_USE_TORCH "Gate use libTorch" OFF)
 
 #=========================================================
 # RTK / ITK
@@ -116,7 +141,7 @@ ENDIF()
 #=========================================================
 # Option for Optical Photon use
 IF(GATE_USE_OPTICAL)
-  FIND_PACKAGE(LIBXML2 REQUIRED)
+  FIND_PACKAGE(LibXml2 REQUIRED)
   INCLUDE_DIRECTORIES(${LIBXML2_INCLUDE_DIR})
   SET(LINK_DIRECTORIES ${LIBXML2_LIBRARIES})
 ENDIF(GATE_USE_OPTICAL)
@@ -133,12 +158,6 @@ IF(GATE_USE_XRAYLIB)
 ENDIF(GATE_USE_XRAYLIB)
 
 #=========================================================
-# Option for Davis model
-IF(GATE_USE_DAVIS)
-  MESSAGE("Warning! You have to install a manually modified version of Geant4 to use the Davis LUT model. Please refer to http://wiki.opengatecollaboration.org/index.php/Enabling_LUT_Davis_Model for detailed step-by-step compiling instructions")
-ENDIF(GATE_USE_DAVIS)
-
-#=========================================================
 # Option for Clhep use
 IF(GATE_USE_SYSTEM_CLHEP)
   FIND_PACKAGE(CLHEP REQUIRED)
@@ -149,16 +168,6 @@ IF(GATE_USE_SYSTEM_CLHEP)
 
   #MESSAGE("Found Clhep in ${CLHEP_INCLUDE_DIR} ${CLHEP_LIBRARY}")
 ENDIF()
-
-#=========================================================
-# Option for GPU use
-IF(GATE_USE_GPU)
-  FIND_PACKAGE(CUDA)
-  INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/source/gpu/include/)
-  FILE(GLOB sourcesGPU
-    ${PROJECT_SOURCE_DIR}/source/gpu/src/GateGPUManager.cu
-    )
-ENDIF(GATE_USE_GPU)
 
 #=========================================================
 # Option for LMF use
@@ -194,6 +203,7 @@ INCLUDE_DIRECTORIES(${PROJECT_BINARY_DIR})
 # Setup include directory for this project
 INCLUDE(${Geant4_USE_FILE})
 INCLUDE_DIRECTORIES(
+  ${PROJECT_SOURCE_DIR}/source/io/include
   ${PROJECT_SOURCE_DIR}/source/arf/include
   ${PROJECT_SOURCE_DIR}/source/geometry/include
   ${PROJECT_SOURCE_DIR}/source/physics/include
@@ -204,6 +214,7 @@ INCLUDE_DIRECTORIES(
 #=========================================================
 # Locate sources and headers for this project
 FILE(GLOB sources
+  ${PROJECT_SOURCE_DIR}/source/io/src/*.cc
   ${PROJECT_SOURCE_DIR}/source/arf/src/*.cc
   ${PROJECT_SOURCE_DIR}/source/geometry/src/*.cc
   ${PROJECT_SOURCE_DIR}/source/digits_hits/src/*.cc
@@ -213,19 +224,26 @@ FILE(GLOB sources
   ${PROJECT_SOURCE_DIR}/source/externals/clhep/src/CLHEP/RandomObjects/*.cc)
 
 FILE(GLOB headers
+  ${PROJECT_SOURCE_DIR}/source/io/include/*.hh
   ${PROJECT_SOURCE_DIR}/source/arf/include/*.hh
   ${PROJECT_SOURCE_DIR}/source/geometry/include/*.hh
   ${PROJECT_SOURCE_DIR}/source/physics/include/*.hh
   ${PROJECT_SOURCE_DIR}/source/digits_hits/include/*.hh
   ${PROJECT_SOURCE_DIR}/source/general/include/*.hh
-  ${PROJECT_SOURCE_DIR}/source/externals/clhep/include/*.hh
-  ${PROJECT_SOURCE_DIR}/source/gpu/include/*.hh)
+  ${PROJECT_SOURCE_DIR}/source/externals/clhep/include/*.hh)
+
+#=========================================================
+IF(GATE_USE_TORCH)
+  set(CMAKE_CXX_STANDARD 14)
+  FIND_PACKAGE(Torch REQUIRED)
+  INCLUDE_DIRECTORIES(${TORCH_INCLUDE_DIRS})
+ENDIF()
 
 #=========================================================
 # RTK
 IF(GATE_USE_RTK OR GATE_USE_ITK)
-  SET(ITK_MINIMAL_VERSION 4.9)
-  SET(ITK_COMPONENTS ITKIOImageBase;ITKIOGDCM;ITKThresholding;ITKFFT;ITKImageCompose;ITKSmoothing)
+  SET(ITK_MINIMAL_VERSION 5.1)
+  SET(ITK_COMPONENTS ITKIOImageBase;ITKGDCM;ITKIOGDCM;ITKThresholding;ITKFFT;ITKImageCompose;ITKSmoothing)
   IF(GATE_USE_RTK)
     LIST(APPEND ITK_COMPONENTS RTK)
     SET(ITK_MINIMAL_VERSION 4.12)
@@ -249,36 +267,37 @@ ENDIF()
 
 #=========================================================
 # Add the executable, and link it to the Geant4/ROOT/CLHEP/ITK libraries
-IF(GATE_USE_GPU AND CUDA_FOUND)
-  SET(CUDA_NVCC_FLAGS "-G;-gencode arch=compute_30,code=sm_30;-gencode arch=compute_32,code=sm_32;-gencode arch=compute_35,code=sm_35;-gencode arch=compute_37,code=sm_37;-gencode arch=compute_50,code=sm_50;-gencode arch=compute_52,code=sm_52;-gencode arch=compute_53,code=sm_53;-gencode arch=compute_60,code=sm_60;-gencode arch=compute_61,code=sm_61;--use_fast_math;-w;--ptxas-options=-v")
-  CUDA_ADD_EXECUTABLE(Gate Gate.cc ${sources} ${sourcesGPU} ${headers})
-ELSE(GATE_USE_GPU AND CUDA_FOUND)
-  ADD_EXECUTABLE(Gate Gate.cc ${sources} ${headers})
-ENDIF(GATE_USE_GPU AND CUDA_FOUND)
-
-TARGET_LINK_LIBRARIES(Gate ${Geant4_LIBRARIES} ${ROOT_LIBRARIES} ${CLHEP_LIBRARIES} ${LIBXML2_LIBRARIES} ${LIBXRL_LIBRARIES} ${LMF_LIBRARY} ${ECAT7_LIBRARY} ${ITK_LIBRARIES} pthread)
+ADD_LIBRARY(GateLib OBJECT ${sources} ${headers})
+TARGET_LINK_LIBRARIES(GateLib ${Geant4_LIBRARIES} ${ROOT_LIBRARIES} ${CLHEP_LIBRARIES} ${LIBXML2_LIBRARIES} ${LIBXRL_LIBRARIES} ${LMF_LIBRARY} ${ECAT7_LIBRARY} ${TORCH_LIBRARIES} ${ITK_LIBRARIES} pthread)
+ADD_EXECUTABLE(Gate Gate.cc $<TARGET_OBJECTS:GateLib> )
+TARGET_LINK_LIBRARIES(Gate GateLib)
 
 #=========================================================
 INSTALL(TARGETS Gate DESTINATION bin)
 
-#=========================================================
-option(GATE_DOWNLOAD_BENCHMARKS_DATA "Download the missing binary data to run gate benchmarks" OFF)
-IF(GATE_DOWNLOAD_BENCHMARKS_DATA OR GATE_DOWNLOAD_EXAMPLES_DATA)
-  INCLUDE(cmake-modules/GateExternalData.cmake)
-ENDIF(GATE_DOWNLOAD_BENCHMARKS_DATA OR GATE_DOWNLOAD_EXAMPLES_DATA)
-IF(GATE_DOWNLOAD_BENCHMARKS_DATA)
-  ADD_SUBDIRECTORY(benchmarks)
-  ExternalData_add_target(GateBenchmarkData)
-ENDIF(GATE_DOWNLOAD_BENCHMARKS_DATA)
+OPTION(GATE_COMPILE_GATEDIGIT "Build GateDigit tools" OFF)
+IF(GATE_COMPILE_GATEDIGIT)
+    ADD_EXECUTABLE(GateDigit_singles_sorter ${PROJECT_SOURCE_DIR}/source/bin/GateDigit_singles_sorter.cc $<TARGET_OBJECTS:GateLib> )
+    ADD_EXECUTABLE(GateDigit_hits_digitizer ${PROJECT_SOURCE_DIR}/source/bin/GateDigit_hits_digitizer.cc  $<TARGET_OBJECTS:GateLib>)
+    ADD_EXECUTABLE(GateDigit_coincidence_processor ${PROJECT_SOURCE_DIR}/source/bin/GateDigit_coincidence_processor.cc $<TARGET_OBJECTS:GateLib>)
+    ADD_EXECUTABLE(GateDigit_seqCoinc2Cones ${PROJECT_SOURCE_DIR}/source/bin/GateDigit_seqCoinc2Cones.cc $<TARGET_OBJECTS:GateLib>)
+    TARGET_LINK_LIBRARIES(GateDigit_singles_sorter GateLib)
+    TARGET_LINK_LIBRARIES(GateDigit_hits_digitizer GateLib)
+    TARGET_LINK_LIBRARIES(GateDigit_coincidence_processor GateLib)
+    TARGET_LINK_LIBRARIES(GateDigit_seqCoinc2Cones GateLib)
+    INSTALL(TARGETS GateDigit_singles_sorter DESTINATION bin)
+    INSTALL(TARGETS GateDigit_hits_digitizer DESTINATION bin)
+    INSTALL(TARGETS GateDigit_coincidence_processor DESTINATION bin)
+    INSTALL(TARGETS GateDigit_seqCoinc2Cones DESTINATION bin)
+ENDIF(GATE_COMPILE_GATEDIGIT)
+
 #=========================================================
 
 
 #=========================================================
 # We remove the warning option "shadow", because there are tons of
-# such warning related to clhep/g4 system of units. Additionally,
-# we force the c++11 std. This is mandatory for Geant4 >= 10.2.
+# such warning related to clhep/g4 system of units.
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-shadow")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 #=========================================================
 
 #=========================================================
@@ -287,7 +306,10 @@ MESSAGE("Your current Geant4 version is ${Geant4_VERSION}")
 
 #=========================================================
 # Add gprof to RELWITHDEBINFO target
-SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -pg")
-SET(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} -pg")
-SET(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO} -pg")
+IF(NOT APPLE)
+  SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -pg")
+  SET(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} -pg")
+  SET(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO} -pg")
+ENDIF()
 #=========================================================
+

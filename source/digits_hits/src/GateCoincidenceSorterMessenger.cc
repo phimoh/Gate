@@ -76,20 +76,34 @@ GateCoincidenceSorterMessenger::GateCoincidenceSorterMessenger(GateCoincidenceSo
   AllPulseOpenCoincGateCmd = new G4UIcmdWithABool(cmdName,this);
   AllPulseOpenCoincGateCmd->SetGuidance("Specify if a given pulse can be part of two coincs");
 
+  //For CC module
+  cmdName = GetDirectoryName()+"setTriggerOnlyByAbsorber";
+  SetTriggerOnlyByAbsorberCmd = new G4UIcmdWithABool(cmdName,this);
+  SetTriggerOnlyByAbsorberCmd->SetGuidance("Specify if only the pulses in the absorber can open a coincidencee window");
+
+  cmdName = GetDirectoryName()+"setAcceptancePolicy4CC";
+  SetAcceptancePolicy4CCCmd = new G4UIcmdWithAString(cmdName,this);
+  SetAcceptancePolicy4CCCmd ->SetGuidance("Coincidence acceptance policy in CC");
+  SetAcceptancePolicy4CCCmd ->SetCandidates("keepIfMultipleVolumeIDsInvolved keepIfMultipleVolumeNamesInvolved keepAll");
+
+
 }
 
 
 GateCoincidenceSorterMessenger::~GateCoincidenceSorterMessenger()
 {
-  delete windowCmd;
-  delete offsetCmd;
-  delete windowJitterCmd;
-  delete offsetJitterCmd;
-  delete minSectorDiffCmd;
-  delete SetInputNameCmd;
-  delete MultiplePolicyCmd;
-  delete setPresortBufferSizeCmd;
-  delete AllPulseOpenCoincGateCmd;
+    delete windowCmd;
+    delete offsetCmd;
+    delete windowJitterCmd;
+    delete offsetJitterCmd;
+    delete minSectorDiffCmd;
+    delete SetInputNameCmd;
+    delete MultiplePolicyCmd;
+    delete setPresortBufferSizeCmd;
+    delete AllPulseOpenCoincGateCmd;
+    delete SetTriggerOnlyByAbsorberCmd;
+    delete SetAcceptancePolicy4CCCmd;
+
 }
 
 
@@ -116,8 +130,12 @@ void GateCoincidenceSorterMessenger::SetNewValue(G4UIcommand* aCommand, G4String
     }
   else if (aCommand == MultiplePolicyCmd)
     { GetCoincidenceSorter()->SetMultiplesPolicy(newValue); }
+  else if (aCommand == SetAcceptancePolicy4CCCmd)
+    { GetCoincidenceSorter()->SetAcceptancePolicy4CC(newValue); }
   else if (aCommand == AllPulseOpenCoincGateCmd)
     { GetCoincidenceSorter()->SetAllPulseOpenCoincGate(AllPulseOpenCoincGateCmd->GetNewBoolValue(newValue)); }
+  else if (aCommand == SetTriggerOnlyByAbsorberCmd)
+    { GetCoincidenceSorter()->SetIfTriggerOnlyByAbsorber(SetTriggerOnlyByAbsorberCmd->GetNewBoolValue(newValue));}
   else
     GateClockDependentMessenger::SetNewValue(aCommand,newValue);
 }

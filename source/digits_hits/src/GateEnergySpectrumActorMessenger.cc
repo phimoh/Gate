@@ -70,21 +70,21 @@ void GateEnergySpectrumActorMessenger::BuildCommands(G4String base)
   pNBinsCmd->SetGuidance(guidance);
   pNBinsCmd->SetParameterName("Nbins", false);
 
-  bb = base+"/energyLossHisto/setEmin";
+  bb = base+"/energyLossHisto/setEdepMin";
   pEdepminCmd = new G4UIcmdWithADoubleAndUnit(bb, this);
   guidance = G4String("Set minimum energy of the energy loss histogram");
   pEdepminCmd->SetGuidance(guidance);
   pEdepminCmd->SetParameterName("Emin", false);
   pEdepminCmd->SetDefaultUnit("MeV");
 
-  bb = base+"/energyLossHisto/setEmax";
+  bb = base+"/energyLossHisto/setEdepMax"; 
   pEdepmaxCmd = new G4UIcmdWithADoubleAndUnit(bb, this);
   guidance = G4String("Set maximum energy of the energy loss histogram");
   pEdepmaxCmd->SetGuidance(guidance);
   pEdepmaxCmd->SetParameterName("Emax", false);
   pEdepmaxCmd->SetDefaultUnit("MeV");
 
-  bb = base+"/energyLossHisto/setNumberOfBins";
+  bb = base+"/energyLossHisto/setNumberOfEdepBins";
   pEdepNBinsCmd = new G4UIcmdWithAnInteger(bb, this);
   guidance = G4String("Set number of bins of the energy loss histogram");
   pEdepNBinsCmd->SetGuidance(guidance);
@@ -100,6 +100,22 @@ void GateEnergySpectrumActorMessenger::BuildCommands(G4String base)
   guidance = G4String("In addition to root output files, also write .txt files, discrete spectrum (that can be open as a source, 'UserSpectrum')");
   pSaveAsTextDiscreteEnergySpectrum->SetGuidance(guidance);
   
+  
+  bb = base+"/enableLETFluenceSpectrum";
+  pEnableLETFluenceSpectrumCmd = new G4UIcmdWithABool(bb, this);
+  guidance = G4String("Enable LET Fluence spectrum");
+  pEnableLETFluenceSpectrumCmd->SetGuidance(guidance);
+  
+  
+  bb = base+"/enableLETtoMaterialFluenceSpectrum";
+  pEnableLETtoMaterialFluenceSpectrumCmd = new G4UIcmdWithABool(bb, this);
+  guidance = G4String("Enable LET to material Fluence spectrum");
+  pEnableLETtoMaterialFluenceSpectrumCmd->SetGuidance(guidance);
+  
+  bb = base+"/setOtherMaterial";
+  pSetOtherMaterialCmd = new G4UIcmdWithAString(bb, this);
+  guidance = G4String("Set Other Material Name");
+  pSetOtherMaterialCmd->SetGuidance(guidance);
   
   bb = base+"/enableLETSpectrum";
   pEnableLETSpectrumCmd = new G4UIcmdWithABool(bb, this);
@@ -188,6 +204,13 @@ void GateEnergySpectrumActorMessenger::BuildCommands(G4String base)
   guidance = G4String("Enable edep track histogram");
   pEnableEdepTrackHistoCmd->SetGuidance(guidance);
   
+  
+  bb = base+"/enableEdepStepHisto";
+  pEnableEdepStepHistoCmd = new G4UIcmdWithABool(bb, this);
+  guidance = G4String("Enable edep step histogram");
+  pEnableEdepStepHistoCmd->SetGuidance(guidance);
+  
+  
   bb = base+"/enableElossHisto";
   pEnableElossHistoCmd = new G4UIcmdWithABool(bb, this);
   guidance = G4String("Enable energy loss histogram");
@@ -200,8 +223,14 @@ void GateEnergySpectrumActorMessenger::BuildCommands(G4String base)
   
   bb = base+"/setEnergyPerUnitMass";
   pEnableEnergyPerUnitMassCMD = new G4UIcmdWithABool(bb, this);
-  guidance = G4String("Set energy per nucleus");
+  guidance = G4String("Score energy per nucleus instead of total energy");
   pEnableEnergyPerUnitMassCMD->SetGuidance(guidance);
+  
+  
+  bb = base+"/normalizeToNbPrimaryEvents";
+  pEnableRelativePrimEventsCMD = new G4UIcmdWithABool(bb, this);
+  guidance = G4String("Normalize all enabled 1D histograms to the number of primary events");
+  pEnableRelativePrimEventsCMD->SetGuidance(guidance);
 }
 //-----------------------------------------------------------------------------
 
@@ -229,6 +258,9 @@ void GateEnergySpectrumActorMessenger::SetNewValue(G4UIcommand* cmd, G4String ne
   if(cmd == pEdepNBinsCmd) pActor->SetEdepNBins(  pEdepNBinsCmd->GetNewIntValue(newValue)  ) ;
   if(cmd == pSaveAsText) pActor->SetSaveAsTextFlag(  pSaveAsText->GetNewBoolValue(newValue)  ) ;
   if(cmd == pSaveAsTextDiscreteEnergySpectrum) pActor->SetSaveAsTextDiscreteEnergySpectrumFlag(  pSaveAsTextDiscreteEnergySpectrum->GetNewBoolValue(newValue)  ) ;
+  if(cmd == pEnableLETFluenceSpectrumCmd) pActor->SetLETFluenceSpectrumCalc(  pEnableLETFluenceSpectrumCmd->GetNewBoolValue(newValue)  ) ;
+  if(cmd == pEnableLETtoMaterialFluenceSpectrumCmd) pActor->SetLETtoMaterialFluenceSpectrumCalc(  pEnableLETtoMaterialFluenceSpectrumCmd->GetNewBoolValue(newValue)  ) ;
+  if (cmd == pSetOtherMaterialCmd) pActor->SetOtherMaterial(newValue);
   if(cmd == pEnableLETSpectrumCmd) pActor->SetLETSpectrumCalc(  pEnableLETSpectrumCmd->GetNewBoolValue(newValue)  ) ;
   if(cmd == pEnableQSpectrumCmd) pActor->SetQSpectrumCalc(  pEnableQSpectrumCmd->GetNewBoolValue(newValue)  ) ;
   
@@ -240,10 +272,12 @@ void GateEnergySpectrumActorMessenger::SetNewValue(G4UIcommand* cmd, G4String ne
   if(cmd == pEnableEdepHistoCmd) pActor->SetEdepHistoCalc (  pEnableEdepHistoCmd->GetNewBoolValue(newValue)  ) ;
   if(cmd == pEnableEdepTimeHistoCmd) pActor->SetEdepTimeHistoCalc(  pEnableEdepTimeHistoCmd->GetNewBoolValue(newValue)  ) ;
   if(cmd == pEnableEdepTrackHistoCmd) pActor->SetEdepTrackHistoCalc(  pEnableEdepTrackHistoCmd->GetNewBoolValue(newValue)  ) ;
+  if(cmd == pEnableEdepStepHistoCmd) pActor->SetEdepStepHistoCalc(  pEnableEdepStepHistoCmd->GetNewBoolValue(newValue)  ) ;
   if(cmd == pEnableElossHistoCmd) pActor->SetElossHistoCalc(  pEnableElossHistoCmd->GetNewBoolValue(newValue)  ) ;
   
   if(cmd == pEnableLogBinningCMD) pActor->SetLogBinning(  pEnableLogBinningCMD->GetNewBoolValue(newValue)  ) ;
   if(cmd == pEnableEnergyPerUnitMassCMD) pActor->SetEnergyPerUnitMass(  pEnableEnergyPerUnitMassCMD->GetNewBoolValue(newValue)  ) ;
+  if(cmd == pEnableRelativePrimEventsCMD) pActor->SetRelativePrimEvents(  pEnableRelativePrimEventsCMD->GetNewBoolValue(newValue)  ) ;
   GateActorMessenger::SetNewValue(cmd,newValue);
 }
 //-----------------------------------------------------------------------------

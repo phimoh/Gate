@@ -99,6 +99,10 @@ public:
   void SetEdepmax(double v) {mEdepmax = v;}
   void SetEdepNBins(int v) {mEdepNBins = v;}
   void SetLETSpectrumCalc(bool b) {mEnableLETSpectrumFlag = b; }
+  void SetLETFluenceSpectrumCalc(bool b) {mEnableLETFluenceSpectrumFlag = b; }
+  void SetLETtoMaterialFluenceSpectrumCalc(bool b) {mEnableLETtoMaterialFluenceSpectrumFlag = b; }
+  void SetOtherMaterial(G4String b) { mOtherMaterial = b; }
+  
   void SetQSpectrumCalc(bool b) {mEnableQSpectrumFlag = b; }
   void SetSaveAsTextFlag(bool b) { mSaveAsTextFlag = b; }
   void SetSaveAsTextDiscreteEnergySpectrumFlag(bool b) { mSaveAsDiscreteSpectrumTextFlag = b; if (b) SetSaveAsTextFlag(b); }
@@ -113,9 +117,17 @@ public:
   void SetEdepTrackHistoCalc(bool b) {mEnableEdepTrackHistoFlag = b; }
   void SetElossHistoCalc(bool b) {mEnableElossHistoFlag = b; }
   
+  void SetEdepStepHistoCalc(bool b) {mEnableEdepStepHistoFlag = b; }
   
   void SetLogBinning(bool b) {mEnableLogBinning = b; }
   void SetEnergyPerUnitMass(bool b) {mEnableEnergyPerUnitMass = b; }
+  void SetRelativePrimEvents(bool b) {mEnableRelativePrimEvents = b; }
+  
+  TH1D* FactoryTH1D(const char *name, const char *title, Int_t nbinsx, Double_t xlow, Double_t xup, const char *xtitle, const char *ytitle);
+  TH1D* FactoryTH1D2(const char *name, const char *title, const char *xtitle, const char *ytitle,  double* binV, int nbins);
+ 
+  double* CreateBinVector(double emin, double emax, int nbins, bool enableLogBin);
+  
 protected:
   GateEnergySpectrumActor(G4String name, G4int depth=0);
 
@@ -139,10 +151,13 @@ protected:
   TH1D * pEdep;
   TH2D * pEdepTime;
   TH1D * pEdepTrack;
+  TH1D * pEdepStep;
   
   std::list<TH1D*> allEnabledTH1DHistograms;
 
   TH1D * pLETSpectrum;
+  TH1D * pLETFluenceSpectrum;
+  TH1D * pLETtoMaterialFluenceSpectrum;
   G4double mLETmin;
   G4double mLETmax;
   int mLETBins;
@@ -154,7 +169,7 @@ protected:
   int mQBins;
   
   double * eBinV;
-  double dEn;
+  //double dEn;
   
   double mEmin;
   double mEmax;
@@ -174,9 +189,10 @@ protected:
   double sumM2;
   double sumM3;
 
-  double edep;
+  G4double edep;
   double tof;
-  double edepTrack;
+  G4double edepTrack;
+  G4double edepEvent;
 
   GateActorMessenger* pMessenger;
 
@@ -186,17 +202,22 @@ protected:
   bool mSaveAsTextFlag;
   bool mSaveAsDiscreteSpectrumTextFlag;
   bool mEnableLETSpectrumFlag;
+  bool mEnableLETFluenceSpectrumFlag;
+  bool mEnableLETtoMaterialFluenceSpectrumFlag;
   bool mEnableQSpectrumFlag;
   bool mEnableEnergySpectrumNbPartFlag;
   bool mEnableEnergySpectrumFluenceCosFlag;
   bool mEnableEnergySpectrumFluenceTrackFlag;
   bool mEnableEnergySpectrumEdepFlag;
+  bool mEnableEdepStepHistoFlag;
   bool mEnableEdepHistoFlag;
   bool mEnableEdepTimeHistoFlag;
   bool mEnableEdepTrackHistoFlag;
   bool mEnableElossHistoFlag;
   bool mEnableLogBinning;
   bool mEnableEnergyPerUnitMass;
+  bool mEnableRelativePrimEvents;
+  G4String mOtherMaterial;
   
   
   G4EmCalculator * emcalc;
